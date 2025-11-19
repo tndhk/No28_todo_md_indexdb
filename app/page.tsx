@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Project, Task, TaskStatus } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
 import AddTaskModal from '@/components/AddTaskModal';
+import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import { triggerConfetti } from '@/lib/confetti';
 import styles from './page.module.css';
 
@@ -18,10 +19,24 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalParentTask, setModalParentTask] = useState<Task | undefined>();
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = useCallback((type: ToastType, message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
 
   const loadProjects = async () => {
     try {
       const res = await fetch('/api/projects');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to load projects');
+      }
       const data = await res.json();
       setProjects(data);
       if (data.length > 0 && !currentProjectId) {
@@ -29,6 +44,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -59,14 +75,18 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        await loadProjects();
-        if (newStatus === 'done') {
-          triggerConfetti();
-        }
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to toggle task');
+      }
+
+      await loadProjects();
+      if (newStatus === 'done') {
+        triggerConfetti();
       }
     } catch (error) {
       console.error('Failed to toggle task:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to toggle task');
     }
   };
 
@@ -84,11 +104,16 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        await loadProjects();
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete task');
       }
+
+      await loadProjects();
+      showToast('success', 'Task deleted successfully');
     } catch (error) {
       console.error('Failed to delete task:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to delete task');
     }
   };
 
@@ -116,11 +141,15 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        await loadProjects();
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update task');
       }
+
+      await loadProjects();
     } catch (error) {
       console.error('Failed to update task:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to update task');
     }
   };
 
@@ -141,11 +170,15 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        await loadProjects();
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to reorder tasks');
       }
+
+      await loadProjects();
     } catch (error) {
       console.error('Failed to reorder tasks:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to reorder tasks');
     }
   };
 
@@ -166,11 +199,16 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        await loadProjects();
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to add task');
       }
+
+      await loadProjects();
+      showToast('success', 'Task added successfully');
     } catch (error) {
       console.error('Failed to add task:', error);
+      showToast('error', error instanceof Error ? error.message : 'Failed to add task');
     }
   };
 
@@ -228,6 +266,8 @@ export default function Home() {
         onAdd={handleModalAdd}
         isSubtask={!!modalParentTask}
       />
+
+      <Toast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
