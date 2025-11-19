@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Next.js 16 task management application called "Markdown Todo" that stores all data as Markdown files. The app provides multiple views (tree, weekly, kanban) for managing tasks and subtasks organized by status (todo, doing, done).
+This is a Next.js 16 task management application called "Markdown Todo" that stores all data as Markdown files. The app provides multiple views (tree, calendar) for managing tasks and subtasks with due date tracking and drag-and-drop support.
 
 **Key Technology Stack:**
 - Next.js 16 (App Router)
@@ -20,17 +20,19 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file represents a project with the following structure:
 
 ```markdown
-# Project Title
+# My Awesome Project
 
 ## Todo
-- [ ] Task 1 #due:2024-12-31
-    - [ ] Subtask 1.1
+- [ ] Buy groceries #due:2025-11-23
+- [ ] Read a book
+    - [ ] Chapter 1 #due:2025-11-20
+    - [ ] Chapter 2 #due:2025-11-21
 
 ## Doing
-- [ ] Task 2
+- [ ] Implement feature
 
 ## Done
-- [x] Task 3
+- [x] Setup project #due:2025-11-19
 ```
 
 **Key Points:**
@@ -42,12 +44,27 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 ### Core Modules
 
 **[lib/types.ts](lib/types.ts)** - Type definitions:
-- `Task` - Represents individual tasks with id, content, status, dueDate, subtasks, lineNumber (for file updates)
+- `Task` - Represents individual tasks with:
+  - `id`: Unique identifier (projectId-lineNumber)
+  - `content`: Task text
+  - `status`: 'todo' | 'doing' | 'done'
+  - `dueDate`: Optional date string (YYYY-MM-DD)
+  - `subtasks`: Array of nested Task objects
+  - `parentId`: Reference to parent task (if nested)
+  - `parentContent`: Parent task content for display in views
+  - `lineNumber`: Position in markdown file (for updates)
+  - `rawLine`: Original line for comparison
 - `Project` - Contains all tasks and metadata
 - `TaskStatus` - Union type: 'todo' | 'doing' | 'done'
 
 **[lib/markdown.ts](lib/markdown.ts)** - Markdown parsing:
-- `parseMarkdown()` - Parses Markdown files into Task/Project structures. Handles nesting via indentation stack, status sections, and due date extraction
+- `parseMarkdown()` - Parses Markdown files into Task/Project structures:
+  - Extracts title from H1 (`# Title`)
+  - Detects status sections (`## Todo`, `## Doing`, `## Done`)
+  - Parses task lines with regex: `^(\s*)- \[(x| )\] (.*)`
+  - Extracts due dates: `#due:YYYY-MM-DD`
+  - Builds task hierarchy using indentation stack
+  - Captures parent content for display
 - `getAllProjects()` - Reads all `.md` files from `data/` directory and returns parsed projects
 
 **[lib/markdown-updater.ts](lib/markdown-updater.ts)** - File mutations:
@@ -59,12 +76,13 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 ### API Layer
 
 **[app/api/projects/route.ts](app/api/projects/route.ts)**:
-- `GET /api/projects` - Returns all projects
+- `GET /api/projects` - Returns all projects with parsed tasks
 - `POST /api/projects` - Handles mutations with action-based routing:
-  - `action: 'add'` - Add new task (with optional parent)
-  - `action: 'update'` - Update task statuses (used for bulk updates)
-  - `action: 'updateTask'` - Modify content/status/due date
-  - `action: 'delete'` - Remove task and children
+  - `action: 'add'` - Add new task with optional parent, auto-creates status sections
+  - `action: 'updateTask'` - Modify content/status/due date, preserves indentation
+  - `action: 'delete'` - Remove task and all nested children
+  - `action: 'reorder'` - Reorder tasks within same parent level
+  - All mutations maintain line number accuracy and file integrity
 
 ### UI Components
 
@@ -80,16 +98,16 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 **[components/TreeView.tsx](components/TreeView.tsx)** - Tree/outline view:
 - Displays all tasks in hierarchical tree structure
 - Supports task toggling, deletion, addition, and inline editing
-- Uses dnd-kit for drag-and-drop (currently parsed but may not be fully implemented)
+- Auto-save on blur when editing tasks
+- Drag-and-drop task reordering with dnd-kit
+- Double-click to edit inline, Escape to cancel, blur to save
+- Drag handle (GripVertical icon) for reordering
 
 **[components/WeeklyView.tsx](components/WeeklyView.tsx)** - Calendar view:
 - Tasks organized by week based on due dates
-- Focuses on tasks with due dates assigned
-
-**[components/KanbanView.tsx](components/KanbanView.tsx)** - Kanban view:
-- Tasks organized into columns: Todo, Doing, Done
-- Supports drag-and-drop between columns
-- Uses dnd-kit for column management
+- Displays parent task name above subtasks for context
+- Drag-and-drop to reschedule tasks to different dates
+- Local timezone date handling (fixes UTC offset issues)
 
 **[components/AddTaskModal.tsx](components/AddTaskModal.tsx)** - Task creation:
 - Modal for adding new tasks or subtasks
@@ -113,11 +131,12 @@ npm run lint     # Run ESLint
    ```tsx
    interface ViewProps {
      tasks: Task[];
-     onTaskUpdate: (task: Task, updates: Partial<Task>) => Promise<void>;
+     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
    }
    ```
 2. Add the view type to `ViewType` union in [app/page.tsx:12](app/page.tsx#L12)
-3. Render the component in the conditional at [app/page.tsx:189-210](app/page.tsx#L189-L210)
+3. Add handler in [app/page.tsx](app/page.tsx) if needed (e.g., `handleTaskReorder`)
+4. Render the component in the conditional at [app/page.tsx:175-190](app/page.tsx#L175-L190)
 
 ### Modifying Task Persistence
 
@@ -125,18 +144,70 @@ When changing how tasks are saved to Markdown:
 1. Update parsing logic in [lib/markdown.ts](lib/markdown.ts) if changing format
 2. Update writing logic in [lib/markdown-updater.ts](lib/markdown-updater.ts) to match
 3. Keep line numbers accurate - they're used as task IDs for updates
+4. If adding new fields, update [lib/types.ts](lib/types.ts) Task interface
 
 ### Working with Task Hierarchies
 
-The markdown format stores nesting via indentation. When operating on nested tasks:
+The markdown format stores nesting via indentation:
+- Parent tasks are at base indentation
+- Child tasks indented 4 spaces deeper
+- Building hierarchy during parsing:
+  ```typescript
+  const taskStack: { task: Task; indent: number }[] = [];
+  // Pop stack when indent decreases
+  // Add to current parent's subtasks
+  // Push new task onto stack
+  ```
 - `deleteTask()` recursively removes all children by indentation level
-- `addTask()` with `parentLineNumber` inserts at the correct indentation
-- The Task tree structure is built during parsing via `taskStack` for tracking depth
+- `addTask()` with `parentLineNumber` inserts at correct indentation
+- `parentContent` field captures parent text for display in Calendar View
+
+### Editing Task Content
+
+TreeView implements auto-save on blur:
+1. Double-click task or click edit button to enter edit mode
+2. Change content or due date
+3. Click outside or Tab to another field - auto-saves
+4. Press Escape to cancel without saving
+5. Enter key saves and exits edit mode
+
+For Calendar View dragging:
+1. Click and hold drag handle on task card
+2. Drag to target date column
+3. Release to update due date via `onTaskUpdate`
+
+### Adding Task Features
+
+To add new inline features (like priority tags `#priority:high`):
+1. Add to markdown parsing in [lib/markdown.ts](lib/markdown.ts) - extract and strip from content
+2. Add field to [lib/types.ts](lib/types.ts) Task interface
+3. Update [lib/markdown-updater.ts](lib/markdown-updater.ts) to preserve during updates
+4. Update components to display/edit the feature
+5. Update [app/api/projects/route.ts](app/api/projects/route.ts) to handle in updateTask action
 
 ## Important Implementation Details
 
-- **Line Numbers:** Tasks store `lineNumber` (1-indexed) which is essential for mutations. This must stay synchronized with the file.
-- **Status vs Checkbox:** A task's status is determined by: its checkbox state (`[x]` = done, `[ ]` = todo) AND the section it's under (## Todo, ## Doing, ## Done). When a task is unchecked in a section, its status may not match the section name.
-- **Indentation:** 4 spaces per nesting level. This is hardcoded in [lib/markdown-updater.ts:94](lib/markdown-updater.ts#L94).
-- **Due Dates:** Stored inline as `#due:YYYY-MM-DD` and stripped during display. Must be preserved during updates.
-- **Auto-section Creation:** If a task is added to a non-existent status section, that section is automatically created at the end of the file.
+- **Line Numbers:** Tasks store `lineNumber` (1-indexed) essential for mutations. Must stay synchronized with file content. Used as part of task ID generation.
+
+- **Parent Content Tracking:** When tasks are parsed, parent task content is captured in `parentContent` field. This is used in Calendar View to display context for nested tasks without traversing the tree.
+
+- **Auto-save in Tree View:** Edit containers use `onBlur` handler that triggers save when focus leaves the container. Escape key cancels edits. Save/Cancel buttons were removed in favor of auto-save UX.
+
+- **Timezone Handling:** Calendar View uses local timezone for date formatting:
+  ```typescript
+  const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  ```
+  This prevents UTC offset issues where tasks appeared on wrong dates.
+
+- **Status vs Checkbox:** A task's status is determined by its checkbox state (`[x]` = done, `[ ]` = todo) AND the section header. Status sections are optional but provide semantic organization.
+
+- **Indentation:** 4 spaces per nesting level, hardcoded in [lib/markdown-updater.ts](lib/markdown-updater.ts). Subtasks are indented one level deeper than their parent.
+
+- **Due Dates:** Stored inline as `#due:YYYY-MM-DD` and stripped during parsing for display. Must be preserved during all update operations.
+
+- **Auto-section Creation:** When tasks are added, status sections are auto-created at end of file if they don't exist. Only create sections matching task status.
+
+- **Drag-and-Drop:**
+  - Tree View: Tasks reordered within same parent level using dnd-kit with SortableContext
+  - Calendar View: Tasks moved between date columns to reschedule
+  - Both use `onTaskReorder` or `onTaskUpdate` callbacks respectively
