@@ -1,0 +1,247 @@
+.treeView {
+    padding: 1rem;
+}
+
+.taskItem {
+    margin-bottom: 0.5rem;
+}
+
+.taskRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.taskRow:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.expandButton {
+    background: none;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.expandButton:hover {
+    opacity: 1;
+}
+
+.expandSpacer {
+    width: 16px;
+}
+
+.checkbox {
+    background: none;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.checkbox:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.checkbox .checked {
+    color: var(--success);
+    opacity: 1;
+}
+
+.taskContent {
+    flex: 1;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.taskContent.completed {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.dueDate {
+    font-size: 0.8rem;
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.statusBadge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.statusBadge.todo {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--foreground);
+}
+
+.statusBadge.doing {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary);
+}
+
+.statusBadge.done {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.subtasks {
+    margin-left: 2.5rem;
+    margin-top: 0.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border);
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.taskRow:hover .actions {
+    opacity: 1;
+}
+
+.actionButton {
+    background: none;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: all 0.2s;
+    border-radius: var(--radius-sm);
+}
+
+.actionButton:hover {
+    opacity: 1;
+    background: var(--surface-hover);
+}
+
+.actionButton:last-child:hover {
+    color: var(--danger);
+}
+
+.addTaskContainer {
+    margin-bottom: 1rem;
+}
+
+.addTaskButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addTaskButton:hover {
+    background: var(--secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.editContainer {
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.editInput {
+    flex: 1;
+    padding: 0.5rem;
+    background: var(--glass-bg);
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: var(--foreground);
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.editDateInput {
+    padding: 0.5rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--foreground);
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.editDateInput:focus {
+    border-color: var(--primary);
+}
+
+.editActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.saveButton,
+.cancelButton {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.saveButton {
+    background: var(--primary);
+    color: white;
+}
+
+.saveButton:hover {
+    background: var(--secondary);
+}
+
+.cancelButton {
+    background: var(--surface-hover);
+    color: var(--foreground);
+}
+
+.cancelButton:hover {
+    background: var(--border);
+}
+
+.taskContent {
+    cursor: text;
+}
+
+.taskContent:hover {
+    opacity: 0.8;
+}

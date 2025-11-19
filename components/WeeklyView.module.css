@@ -1,0 +1,180 @@
+.weeklyView {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.weekHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+}
+
+.navButton {
+    padding: 0.5rem 1rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.navButton:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.navButton:active {
+    transform: scale(0.98);
+}
+
+.weekRange {
+    font-weight: 600;
+    font-size: 1rem;
+    min-width: 150px;
+    text-align: center;
+}
+
+.weekGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    min-width: 100%;
+}
+
+.dayColumn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.dayColumn:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.dayColumn.today {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.dayHeader {
+    padding: 1rem;
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+}
+
+.dayName {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+}
+
+.dayDate {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.today .dayHeader {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.today .dayName,
+.today .dayDate {
+    opacity: 1;
+}
+
+.taskList {
+    padding: 1rem;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.taskList.dropActive {
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.taskCard {
+    padding: 0.75rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: grab;
+    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+    animation: fadeIn 0.3s ease-out;
+    will-change: transform, box-shadow, border-color;
+}
+
+.taskCard:active {
+    cursor: grabbing;
+}
+
+.taskCard:hover {
+    transform: translateX(4px);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.taskCard.todo {
+    border-left: 3px solid rgba(148, 163, 184, 0.5);
+}
+
+.taskCard.doing {
+    border-left: 3px solid var(--primary);
+}
+
+.taskCard.done {
+    border-left: 3px solid var(--success);
+    opacity: 0.6;
+}
+
+.taskContent {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.taskStatus {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0.6;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 2rem 1rem;
+    opacity: 0.3;
+    font-size: 0.85rem;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    margin: 1rem 0;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.taskCard.dragging {
+    opacity: 1;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.5);
+    transform: scale(1.05) rotate(-2deg);
+    z-index: 1000;
+}
