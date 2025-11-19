@@ -82,7 +82,14 @@ function TaskItem({
                 </button>
 
                 {isEditing ? (
-                    <div className={styles.editContainer}>
+                    <div
+                        className={styles.editContainer}
+                        onBlur={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                                handleSave();
+                            }
+                        }}
+                    >
                         <input
                             type="text"
                             value={editContent}
@@ -97,14 +104,6 @@ function TaskItem({
                             onChange={(e) => setEditDueDate(e.target.value)}
                             className={styles.editDateInput}
                         />
-                        <div className={styles.editActions}>
-                            <button onClick={handleSave} className={styles.saveButton}>
-                                Save
-                            </button>
-                            <button onClick={handleCancel} className={styles.cancelButton}>
-                                Cancel
-                            </button>
-                        </div>
                     </div>
                 ) : (
                     <>

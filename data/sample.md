@@ -1,10 +1,10 @@
 # My Awesome Project
 
-- [ ] Buy groceries
+- [ ] Buy groceries #due:2025-11-21
 - [ ] Read a book
     - [ ] Chapter 1
     - [ ] Chapter 2
     - [ ] dfgsdfgdg #due:2025-11-18
 - [ ] Implement Markdown parser
 - [ ] Setup Next.js
-- [x] test #due:2025-11-19
+- [ ] test #due:2025-11-19
