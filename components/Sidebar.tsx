@@ -33,14 +33,14 @@ export default function Sidebar({
                         onClick={() => onViewChange('tree')}
                     >
                         <LayoutList size={18} />
-                        <span>Projects</span>
+                        <span>Tree</span>
                     </button>
                     <button
                         className={`${styles.navItem} ${currentView === 'weekly' ? styles.active : ''}`}
                         onClick={() => onViewChange('weekly')}
                     >
                         <Calendar size={18} />
-                        <span>Weekly</span>
+                        <span>Calendar</span>
                     </button>
                 </div>
 

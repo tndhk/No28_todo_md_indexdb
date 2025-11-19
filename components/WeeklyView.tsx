@@ -48,8 +48,10 @@ function DraggableTask({ task }: { task: Task }) {
             {...listeners}
             className={`${styles.taskCard} ${styles[task.status]}`}
         >
+            {task.parentContent && (
+                <div className={styles.parentContent}>{task.parentContent}</div>
+            )}
             <div className={styles.taskContent}>{task.content}</div>
-            <div className={styles.taskStatus}>{task.status}</div>
         </div>
     );
 }
@@ -211,8 +213,10 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             <DragOverlay>
                 {draggedTask ? (
                     <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging}`}>
+                        {draggedTask.parentContent && (
+                            <div className={styles.parentContent}>{draggedTask.parentContent}</div>
+                        )}
                         <div className={styles.taskContent}>{draggedTask.content}</div>
-                        <div className={styles.taskStatus}>{draggedTask.status}</div>
                     </div>
                 ) : null}
             </DragOverlay>

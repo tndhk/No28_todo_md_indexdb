@@ -52,25 +52,30 @@ export function parseMarkdown(id: string, content: string, filePath: string): Pr
             const dueDate = dueMatch ? dueMatch[1] : undefined;
             const content = textContent.replace(/#due:\d{4}-\d{2}-\d{2}/, '').trim();
 
+            // Handle Nesting
+            while (taskStack.length > 0 && taskStack[taskStack.length - 1].indent >= indent) {
+                taskStack.pop();
+            }
+
+            let parentContent: string | undefined;
+            if (taskStack.length > 0) {
+                parentContent = taskStack[taskStack.length - 1].task.content;
+            }
+
             const newTask: Task = {
                 id: `${id}-${lineNumber}`,
                 content,
                 status: isChecked ? 'done' : currentSection,
                 dueDate,
                 subtasks: [],
+                parentId: taskStack.length > 0 ? taskStack[taskStack.length - 1].task.id : undefined,
+                parentContent,
                 rawLine: line,
                 lineNumber,
             };
 
-            // Handle Nesting
-            while (taskStack.length > 0 && taskStack[taskStack.length - 1].indent >= indent) {
-                taskStack.pop();
-            }
-
             if (taskStack.length > 0) {
-                const parent = taskStack[taskStack.length - 1].task;
-                parent.subtasks.push(newTask);
-                newTask.parentId = parent.id;
+                taskStack[taskStack.length - 1].task.subtasks.push(newTask);
             } else {
                 tasks.push(newTask);
             }

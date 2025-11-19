@@ -121,10 +121,6 @@ function TaskItem({
                             </span>
                         )}
 
-                        <span className={`${styles.statusBadge} ${styles[task.status]}`}>
-                            {task.status}
-                        </span>
-
                         <div className={styles.actions}>
                             <button
                                 className={styles.actionButton}
