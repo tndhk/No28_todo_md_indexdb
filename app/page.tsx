@@ -5,11 +5,10 @@ import { Project, Task, TaskStatus } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
-import KanbanView from '@/components/KanbanView';
 import AddTaskModal from '@/components/AddTaskModal';
 import styles from './page.module.css';
 
-type ViewType = 'tree' | 'weekly' | 'kanban';
+type ViewType = 'tree' | 'weekly';
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -183,12 +182,6 @@ export default function Home() {
           )}
           {currentView === 'weekly' && currentProject && (
             <WeeklyView
-              tasks={currentProject.tasks}
-              onTaskUpdate={handleTaskUpdate}
-            />
-          )}
-          {currentView === 'kanban' && currentProject && (
-            <KanbanView
               tasks={currentProject.tasks}
               onTaskUpdate={handleTaskUpdate}
             />

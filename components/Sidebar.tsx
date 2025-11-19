@@ -1,14 +1,14 @@
 'use client';
 
 import { Project } from '@/lib/types';
-import { FileText, LayoutList, Calendar, Kanban } from 'lucide-react';
+import { FileText, LayoutList, Calendar } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
     projects: Project[];
-    currentView: 'tree' | 'weekly' | 'kanban';
+    currentView: 'tree' | 'weekly';
     currentProjectId?: string;
-    onViewChange: (view: 'tree' | 'weekly' | 'kanban') => void;
+    onViewChange: (view: 'tree' | 'weekly') => void;
     onProjectSelect: (projectId: string) => void;
 }
 
@@ -41,13 +41,6 @@ export default function Sidebar({
                     >
                         <Calendar size={18} />
                         <span>Weekly</span>
-                    </button>
-                    <button
-                        className={`${styles.navItem} ${currentView === 'kanban' ? styles.active : ''}`}
-                        onClick={() => onViewChange('kanban')}
-                    >
-                        <Kanban size={18} />
-                        <span>Kanban</span>
                     </button>
                 </div>
 
