@@ -142,3 +142,5 @@ export default function MDView({ projectId, onSaveSuccess, onError }: MDViewProp
         </div>
     );
 }
+
+MDView.displayName = 'MDView';
