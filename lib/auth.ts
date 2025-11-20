@@ -91,6 +91,13 @@ export async function createUser(
         fs.mkdirSync(userDataDir, { recursive: true });
     }
 
+    // Copy sample project to user's directory
+    const sampleSource = path.join(process.cwd(), 'data', 'sample.md');
+    const sampleDest = path.join(userDataDir, 'sample.md');
+    if (fs.existsSync(sampleSource)) {
+        fs.copyFileSync(sampleSource, sampleDest);
+    }
+
     const newUser: AppUser = {
         id,
         name,

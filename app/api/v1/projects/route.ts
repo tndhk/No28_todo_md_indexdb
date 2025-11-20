@@ -21,6 +21,15 @@ export async function GET() {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
+
+        // Ensure user is authenticated
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
         const dataDir = getUserDataDir(userId);
 
         apiLogger.debug({ requestId, userId, dataDir }, 'Fetching projects');
