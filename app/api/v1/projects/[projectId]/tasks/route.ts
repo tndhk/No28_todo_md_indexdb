@@ -13,7 +13,7 @@ import {
     sanitizeContent,
 } from '@/lib/security';
 
-interface RouteParams {
+interface RouteContext {
     params: Promise<{
         projectId: string;
     }>;
@@ -23,9 +23,10 @@ interface RouteParams {
  * POST /api/v1/projects/[projectId]/tasks
  * Creates a new task in the project
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteContext) {
     try {
-        const { projectId } = await params;
+        const params = await context.params;
+        const projectId = params.projectId;
         const body = await request.json();
         const { content, status, dueDate, parentLineNumber } = body;
 

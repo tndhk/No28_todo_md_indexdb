@@ -13,7 +13,7 @@ import {
     sanitizeContent,
 } from '@/lib/security';
 
-interface RouteParams {
+interface RouteContext {
     params: Promise<{
         projectId: string;
         lineNumber: string;
@@ -24,10 +24,11 @@ interface RouteParams {
  * PUT /api/v1/projects/[projectId]/tasks/[lineNumber]
  * Updates a task's properties
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
     try {
-        const { projectId, lineNumber: lineNumberStr } = await params;
-        const lineNumber = parseInt(lineNumberStr, 10);
+        const params = await context.params;
+        const projectId = params.projectId;
+        const lineNumber = parseInt(params.lineNumber, 10);
         const body = await request.json();
         const { content, status, dueDate } = body;
 
@@ -114,7 +115,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json(updatedProjects);
     } catch (error) {
         console.error('Error updating task:', error);
+        // Ensure we always return valid JSON
         const errorMessage = error instanceof Error ? error.message : 'Failed to update task';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error('Error stack:', errorStack);
         return NextResponse.json(
             { error: errorMessage },
             { status: 500 }
@@ -126,10 +130,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/v1/projects/[projectId]/tasks/[lineNumber]
  * Deletes a task and its subtasks
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
     try {
-        const { projectId, lineNumber: lineNumberStr } = await params;
-        const lineNumber = parseInt(lineNumberStr, 10);
+        const params = await context.params;
+        const projectId = params.projectId;
+        const lineNumber = parseInt(params.lineNumber, 10);
 
         // Validate project ID
         const projectIdValidation = validateProjectId(projectId);

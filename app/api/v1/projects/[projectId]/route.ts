@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects } from '@/lib/markdown';
 import { validateProjectId } from '@/lib/security';
 
-interface RouteParams {
+interface RouteContext {
     params: Promise<{
         projectId: string;
     }>;
@@ -12,9 +12,10 @@ interface RouteParams {
  * GET /api/v1/projects/[projectId]
  * Returns a specific project by ID
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
     try {
-        const { projectId } = await params;
+        const params = await context.params;
+        const projectId = params.projectId;
 
         // Validate project ID
         const projectIdValidation = validateProjectId(projectId);

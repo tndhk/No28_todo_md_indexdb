@@ -8,7 +8,7 @@ import {
     withFileLock,
 } from '@/lib/security';
 
-interface RouteParams {
+interface RouteContext {
     params: Promise<{
         projectId: string;
     }>;
@@ -18,9 +18,10 @@ interface RouteParams {
  * PUT /api/v1/projects/[projectId]/tasks/reorder
  * Reorders tasks within a project
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext) {
     try {
-        const { projectId } = await params;
+        const params = await context.params;
+        const projectId = params.projectId;
         const body = await request.json();
         const { tasks } = body;
 
