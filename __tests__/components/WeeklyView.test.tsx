@@ -1,12 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import WeeklyView from '@/components/WeeklyView';
 import { Task } from '@/lib/types';
 
 // Mock dnd-kit
 jest.mock('@dnd-kit/core', () => ({
-  DndContext: ({ children, onDragEnd }: { children: React.ReactNode; onDragEnd?: () => void }) => (
+  DndContext: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
   DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,

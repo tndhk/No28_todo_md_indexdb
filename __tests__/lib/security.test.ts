@@ -7,7 +7,6 @@ import {
   validateDueDate,
   validateLineNumber,
   sanitizeContent,
-  acquireFileLock,
   withFileLock,
 } from '@/lib/security';
 
@@ -273,7 +272,7 @@ describe('security', () => {
         await withFileLock('/test.md', () => {
           throw new Error('test error');
         });
-      } catch (e) {
+      } catch {
         // expected
       }
 

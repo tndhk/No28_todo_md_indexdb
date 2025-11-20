@@ -74,12 +74,12 @@ export default function Home() {
     }));
   }, [currentProjectId]);
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const data = await fetchProjects();
       setProjects(data);
-      if (data.length > 0 && !currentProjectId) {
-        setCurrentProjectId(data[0].id);
+      if (data.length > 0) {
+        setCurrentProjectId(prev => prev || data[0].id);
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
@@ -87,11 +87,11 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [loadProjects]);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 

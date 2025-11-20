@@ -6,7 +6,6 @@ import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSe
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { triggerConfetti } from '@/lib/confetti';
 import styles from './WeeklyView.module.css';
 
 interface WeeklyViewProps {
@@ -143,9 +142,6 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
 
         // Update task due date
         onTaskUpdate(task, { dueDate: newDate });
-
-        // If moving to today (or just general interaction), maybe trigger confetti? 
-        // Actually, confetti is better for status change.
     };
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
