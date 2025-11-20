@@ -1,0 +1,432 @@
+openapi: 3.0.3
+info:
+  title: Markdown Todo API
+  description: |
+    RESTful API for managing task projects stored as Markdown files.
+    Tasks are organized in a hierarchical structure with support for subtasks,
+    due dates, and status tracking.
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Projects
+    description: Project management operations
+  - name: Tasks
+    description: Task management operations
+
+paths:
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: Get all projects
+      description: Returns a list of all projects with their tasks
+      operationId: getProjects
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get a project by ID
+      description: Returns a single project with all its tasks
+      operationId: getProjectById
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: The project ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid project ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{projectId}/tasks:
+    post:
+      tags:
+        - Tasks
+      summary: Create a new task
+      description: Creates a new task in the specified project
+      operationId: createTask
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: The project ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{projectId}/tasks/{lineNumber}:
+    put:
+      tags:
+        - Tasks
+      summary: Update a task
+      description: Updates an existing task's properties
+      operationId: updateTask
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: The project ID
+          schema:
+            type: string
+        - name: lineNumber
+          in: path
+          required: true
+          description: The task's line number in the markdown file
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      description: Deletes a task and all its subtasks
+      operationId: deleteTask
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: The project ID
+          schema:
+            type: string
+        - name: lineNumber
+          in: path
+          required: true
+          description: The task's line number in the markdown file
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{projectId}/tasks/reorder:
+    put:
+      tags:
+        - Tasks
+      summary: Reorder tasks
+      description: Reorders all tasks in a project
+      operationId: reorderTasks
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: The project ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderTasksRequest'
+      responses:
+        '200':
+          description: Tasks reordered successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    TaskStatus:
+      type: string
+      enum:
+        - todo
+        - doing
+        - done
+      description: The status of a task
+
+    Task:
+      type: object
+      required:
+        - id
+        - content
+        - status
+        - subtasks
+        - lineNumber
+        - rawLine
+      properties:
+        id:
+          type: string
+          description: Unique task identifier (projectId-lineNumber)
+          example: "my-project-5"
+        content:
+          type: string
+          description: The task content text
+          example: "Buy groceries"
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        dueDate:
+          type: string
+          format: date
+          description: Optional due date in YYYY-MM-DD format
+          example: "2025-11-23"
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: Nested subtasks
+        parentId:
+          type: string
+          description: Reference to parent task ID (if nested)
+          example: "my-project-3"
+        parentContent:
+          type: string
+          description: Parent task content for display context
+          example: "Shopping list"
+        lineNumber:
+          type: integer
+          minimum: 1
+          description: Line number in the markdown file
+          example: 5
+        rawLine:
+          type: string
+          description: Original markdown line
+          example: "- [ ] Buy groceries #due:2025-11-23"
+
+    Project:
+      type: object
+      required:
+        - id
+        - title
+        - tasks
+        - path
+      properties:
+        id:
+          type: string
+          description: Unique project identifier
+          example: "my-project"
+        title:
+          type: string
+          description: Project title from H1 heading
+          example: "My Awesome Project"
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: All tasks in the project
+        path:
+          type: string
+          description: File path to the markdown file
+          example: "data/my-project.md"
+
+    CreateTaskRequest:
+      type: object
+      required:
+        - content
+        - status
+      properties:
+        content:
+          type: string
+          description: The task content text
+          minLength: 1
+          maxLength: 500
+          example: "Buy groceries"
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        dueDate:
+          type: string
+          format: date
+          description: Optional due date in YYYY-MM-DD format
+          example: "2025-11-23"
+        parentLineNumber:
+          type: integer
+          minimum: 1
+          description: Line number of parent task (for creating subtasks)
+          example: 3
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Updated task content text
+          minLength: 1
+          maxLength: 500
+          example: "Buy groceries and vegetables"
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        dueDate:
+          type: string
+          format: date
+          description: Updated due date in YYYY-MM-DD format
+          example: "2025-11-25"
+
+    ReorderTasksRequest:
+      type: object
+      required:
+        - tasks
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: Complete list of tasks in new order
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Project not found"

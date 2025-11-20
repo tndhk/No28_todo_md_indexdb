@@ -25,7 +25,7 @@ export class ApiError extends Error {
  * @throws {ApiValidationError} if response validation fails
  */
 export async function fetchProjects(): Promise<Project[]> {
-    const res = await fetch('/api/projects');
+    const res = await fetch('/api/v1/projects');
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -48,12 +48,10 @@ export async function addTask(
     dueDate?: string,
     parentLineNumber?: number
 ): Promise<Project[]> {
-    const res = await fetch('/api/projects', {
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            action: 'add',
-            projectId,
             content,
             status,
             dueDate,
@@ -84,15 +82,10 @@ export async function updateTask(
         dueDate?: string;
     }
 ): Promise<Project[]> {
-    const res = await fetch('/api/projects', {
-        method: 'POST',
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'updateTask',
-            projectId,
-            task: { lineNumber },
-            updates,
-        }),
+        body: JSON.stringify(updates),
     });
 
     if (!res.ok) {
@@ -113,14 +106,8 @@ export async function deleteTask(
     projectId: string,
     lineNumber: number
 ): Promise<Project[]> {
-    const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'delete',
-            projectId,
-            task: { lineNumber },
-        }),
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
+        method: 'DELETE',
     });
 
     if (!res.ok) {
@@ -141,14 +128,10 @@ export async function reorderTasks(
     projectId: string,
     tasks: Task[]
 ): Promise<Project[]> {
-    const res = await fetch('/api/projects', {
-        method: 'POST',
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/reorder`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'reorder',
-            projectId,
-            tasks,
-        }),
+        body: JSON.stringify({ tasks }),
     });
 
     if (!res.ok) {
