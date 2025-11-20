@@ -8,6 +8,14 @@ import WeeklyView from '@/components/WeeklyView';
 import AddTaskModal from '@/components/AddTaskModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import { triggerConfetti } from '@/lib/confetti';
+import {
+  fetchProjects,
+  addTask as apiAddTask,
+  updateTask as apiUpdateTask,
+  deleteTask as apiDeleteTask,
+  reorderTasks as apiReorderTasks,
+  getErrorMessage,
+} from '@/lib/api';
 import styles from './page.module.css';
 
 type ViewType = 'tree' | 'weekly';
@@ -67,19 +75,14 @@ export default function Home() {
 
   const loadProjects = async () => {
     try {
-      const res = await fetch('/api/projects');
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to load projects');
-      }
-      const data = await res.json();
+      const data = await fetchProjects();
       setProjects(data);
       if (data.length > 0 && !currentProjectId) {
         setCurrentProjectId(data[0].id);
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to load projects');
+      showToast('error', getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -105,31 +108,15 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateTask',
-          projectId: currentProjectId,
-          task: { lineNumber: task.lineNumber },
-          updates: {
-            status: newStatus,
-          },
-        }),
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
+        status: newStatus,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to toggle task');
-      }
-
-      // Sync with server state
-      await loadProjects();
+      setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
       setProjects(previousProjects);
       console.error('Failed to toggle task:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to toggle task');
+      showToast('error', getErrorMessage(error));
     }
   };
 
@@ -142,29 +129,14 @@ export default function Home() {
     updateCurrentProjectTasks(tasks => deleteTaskFromTree(tasks, task.id));
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'delete',
-          projectId: currentProjectId,
-          task: { lineNumber: task.lineNumber },
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to delete task');
-      }
-
-      // Sync with server state
-      await loadProjects();
+      const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber);
+      setProjects(updatedProjects);
       showToast('success', 'Task deleted successfully');
     } catch (error) {
       // Rollback on error
       setProjects(previousProjects);
       console.error('Failed to delete task:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to delete task');
+      showToast('error', getErrorMessage(error));
     }
   };
 
@@ -177,30 +149,15 @@ export default function Home() {
     if (!currentProjectId) return;
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateTask',
-          projectId: currentProjectId,
-          task: { lineNumber: task.lineNumber },
-          updates: {
-            content: updates.content,
-            dueDate: updates.dueDate,
-            status: updates.status,
-          },
-        }),
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
+        content: updates.content,
+        dueDate: updates.dueDate,
+        status: updates.status,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to update task');
-      }
-
-      await loadProjects();
+      setProjects(updatedProjects);
     } catch (error) {
       console.error('Failed to update task:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to update task');
+      showToast('error', getErrorMessage(error));
     }
   };
 
@@ -213,28 +170,13 @@ export default function Home() {
     updateCurrentProjectTasks(() => newTasks);
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reorder',
-          projectId: currentProjectId,
-          tasks: newTasks
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to reorder tasks');
-      }
-
-      // Sync with server state
-      await loadProjects();
+      const updatedProjects = await apiReorderTasks(currentProjectId, newTasks);
+      setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
       setProjects(previousProjects);
       console.error('Failed to reorder tasks:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to reorder tasks');
+      showToast('error', getErrorMessage(error));
     }
   };
 
@@ -242,29 +184,18 @@ export default function Home() {
     if (!currentProjectId) return;
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'add',
-          projectId: currentProjectId,
-          content,
-          status,
-          dueDate,
-          parentLineNumber: modalParentTask?.lineNumber,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to add task');
-      }
-
-      await loadProjects();
+      const updatedProjects = await apiAddTask(
+        currentProjectId,
+        content,
+        status,
+        dueDate,
+        modalParentTask?.lineNumber
+      );
+      setProjects(updatedProjects);
       showToast('success', 'Task added successfully');
     } catch (error) {
       console.error('Failed to add task:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to add task');
+      showToast('error', getErrorMessage(error));
     }
   };
 
