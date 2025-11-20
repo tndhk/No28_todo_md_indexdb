@@ -7,6 +7,7 @@ import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
 import AddTaskModal from '@/components/AddTaskModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { triggerConfetti } from '@/lib/confetti';
 import {
   fetchProjects,
@@ -208,53 +209,59 @@ export default function Home() {
   }
 
   return (
-    <div className={styles.container}>
-      <Sidebar
-        projects={projects}
-        currentView={currentView}
-        currentProjectId={currentProjectId}
-        onViewChange={setCurrentView}
-        onProjectSelect={setCurrentProjectId}
-      />
+    <ErrorBoundary>
+      <div className={styles.container}>
+        <ErrorBoundary>
+          <Sidebar
+            projects={projects}
+            currentView={currentView}
+            currentProjectId={currentProjectId}
+            onViewChange={setCurrentView}
+            onProjectSelect={setCurrentProjectId}
+          />
+        </ErrorBoundary>
 
-      <main className={styles.main}>
-        <header className={styles.header}>
-          <h1 className={styles.projectTitle}>
-            {currentProject?.title || 'Select a project'}
-          </h1>
-        </header>
+        <main className={styles.main}>
+          <header className={styles.header}>
+            <h1 className={styles.projectTitle}>
+              {currentProject?.title || 'Select a project'}
+            </h1>
+          </header>
 
-        <div className={styles.content}>
-          {currentView === 'tree' && currentProject && (
-            <TreeView
-              tasks={currentProject.tasks}
-              onTaskToggle={handleTaskToggle}
-              onTaskDelete={handleTaskDelete}
-              onTaskAdd={handleTaskAdd}
-              onTaskUpdate={handleTaskUpdate}
-              onTaskReorder={handleTaskReorder}
-            />
-          )}
-          {currentView === 'weekly' && currentProject && (
-            <WeeklyView
-              tasks={currentProject.tasks}
-              onTaskUpdate={handleTaskUpdate}
-            />
-          )}
-        </div>
-      </main>
+          <div className={styles.content}>
+            <ErrorBoundary>
+              {currentView === 'tree' && currentProject && (
+                <TreeView
+                  tasks={currentProject.tasks}
+                  onTaskToggle={handleTaskToggle}
+                  onTaskDelete={handleTaskDelete}
+                  onTaskAdd={handleTaskAdd}
+                  onTaskUpdate={handleTaskUpdate}
+                  onTaskReorder={handleTaskReorder}
+                />
+              )}
+              {currentView === 'weekly' && currentProject && (
+                <WeeklyView
+                  tasks={currentProject.tasks}
+                  onTaskUpdate={handleTaskUpdate}
+                />
+              )}
+            </ErrorBoundary>
+          </div>
+        </main>
 
-      <AddTaskModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setModalParentTask(undefined);
-        }}
-        onAdd={handleModalAdd}
-        isSubtask={!!modalParentTask}
-      />
+        <AddTaskModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setModalParentTask(undefined);
+          }}
+          onAdd={handleModalAdd}
+          isSubtask={!!modalParentTask}
+        />
 
-      <Toast toasts={toasts} onDismiss={dismissToast} />
-    </div>
+        <Toast toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    </ErrorBoundary>
   );
 }
