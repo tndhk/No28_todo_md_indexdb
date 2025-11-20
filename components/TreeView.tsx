@@ -1,6 +1,6 @@
 'use client';
 
-import { Task } from '@/lib/types';
+import { Task, RepeatFrequency } from '@/lib/types';
 import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical } from 'lucide-react';
 import { useState } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -34,6 +34,7 @@ function TaskItem({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(task.content);
     const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
+    const [editRepeatFrequency, setEditRepeatFrequency] = useState(task.repeatFrequency || '');
     const hasSubtasks = task.subtasks.length > 0;
 
     const {
@@ -56,6 +57,7 @@ function TaskItem({
             onTaskUpdate(task, {
                 content: editContent,
                 dueDate: editDueDate || undefined,
+                repeatFrequency: editRepeatFrequency ? (editRepeatFrequency as RepeatFrequency) : undefined,
             });
             setIsEditing(false);
         }
@@ -64,6 +66,7 @@ function TaskItem({
     const handleCancel = () => {
         setEditContent(task.content);
         setEditDueDate(task.dueDate || '');
+        setEditRepeatFrequency(task.repeatFrequency || '');
         setIsEditing(false);
     };
 
@@ -126,6 +129,16 @@ function TaskItem({
                             onChange={(e) => setEditDueDate(e.target.value)}
                             className={styles.editDateInput}
                         />
+                        <select
+                            value={editRepeatFrequency}
+                            onChange={(e) => setEditRepeatFrequency(e.target.value)}
+                            className={styles.editRepeatSelect}
+                        >
+                            <option value="">No repeat</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
                     </div>
                 ) : (
                     <>
@@ -139,6 +152,12 @@ function TaskItem({
                         {task.dueDate && (
                             <span className={styles.dueDate}>
                                 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                            </span>
+                        )}
+
+                        {task.repeatFrequency && (
+                            <span className={styles.repeatBadge}>
+                                🔁 {task.repeatFrequency}
                             </span>
                         )}
 

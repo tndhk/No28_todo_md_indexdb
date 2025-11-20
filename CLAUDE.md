@@ -24,9 +24,11 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 
 ## Todo
 - [ ] Buy groceries #due:2025-11-23
+- [ ] Take vitamins #due:2025-11-20 #repeat:daily
 - [ ] Read a book
     - [ ] Chapter 1 #due:2025-11-20
     - [ ] Chapter 2 #due:2025-11-21
+- [ ] Weekly team meeting #due:2025-11-22 #repeat:weekly
 
 ## Doing
 - [ ] Implement feature
@@ -38,6 +40,7 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 **Key Points:**
 - Tasks use checkboxes: `[ ]` (incomplete) or `[x]` (complete)
 - Due dates are stored as inline tags: `#due:YYYY-MM-DD`
+- Repeat frequencies are stored as inline tags: `#repeat:daily`, `#repeat:weekly`, or `#repeat:monthly`
 - Nesting is determined by indentation (4 spaces per level)
 - Status sections (`## Todo`, `## Doing`, `## Done`) are optional and automatically created
 
@@ -49,6 +52,7 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
   - `content`: Task text
   - `status`: 'todo' | 'doing' | 'done'
   - `dueDate`: Optional date string (YYYY-MM-DD)
+  - `repeatFrequency`: Optional repeat frequency ('daily' | 'weekly' | 'monthly')
   - `subtasks`: Array of nested Task objects
   - `parentId`: Reference to parent task (if nested)
   - `parentContent`: Parent task content for display in views
@@ -56,6 +60,7 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
   - `rawLine`: Original line for comparison
 - `Project` - Contains all tasks and metadata
 - `TaskStatus` - Union type: 'todo' | 'doing' | 'done'
+- `RepeatFrequency` - Union type: 'daily' | 'weekly' | 'monthly'
 
 **[lib/markdown.ts](lib/markdown.ts)** - Markdown parsing:
 - `parseMarkdown()` - Parses Markdown files into Task/Project structures:
@@ -63,23 +68,26 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
   - Detects status sections (`## Todo`, `## Doing`, `## Done`)
   - Parses task lines with regex: `^(\s*)- \[(x| )\] (.*)`
   - Extracts due dates: `#due:YYYY-MM-DD`
+  - Extracts repeat frequencies: `#repeat:daily|weekly|monthly`
   - Builds task hierarchy using indentation stack
   - Captures parent content for display
 - `getAllProjects()` - Reads all `.md` files from `data/` directory and returns parsed projects
 
 **[lib/markdown-updater.ts](lib/markdown-updater.ts)** - File mutations:
-- `updateMarkdown()` - Updates task checkbox/content/due date at specific line numbers
+- `updateMarkdown()` - Updates task checkbox/content/due date/repeat frequency at specific line numbers
 - `addTask()` - Inserts new tasks, handling section auto-creation and correct indentation
-- `updateTask()` - Modifies content/status/due date of existing tasks
+- `updateTask()` - Modifies content/status/due date/repeat frequency of existing tasks
 - `deleteTask()` - Removes task and all its subtasks (nested children)
+- `handleRecurringTask()` - Handles recurring task completion by marking as done and creating new occurrence
+- `calculateNextDueDate()` - Calculates next due date based on repeat frequency
 
 ### API Layer
 
 **[app/api/projects/route.ts](app/api/projects/route.ts)**:
 - `GET /api/projects` - Returns all projects with parsed tasks
 - `POST /api/projects` - Handles mutations with action-based routing:
-  - `action: 'add'` - Add new task with optional parent, auto-creates status sections
-  - `action: 'updateTask'` - Modify content/status/due date, preserves indentation
+  - `action: 'add'` - Add new task with optional parent, auto-creates status sections, supports repeat frequency
+  - `action: 'updateTask'` - Modify content/status/due date/repeat frequency, handles recurring task completion
   - `action: 'delete'` - Remove task and all nested children
   - `action: 'reorder'` - Reorder tasks within same parent level
   - All mutations maintain line number accuracy and file integrity
@@ -102,6 +110,8 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 - Drag-and-drop task reordering with dnd-kit
 - Double-click to edit inline, Escape to cancel, blur to save
 - Drag handle (GripVertical icon) for reordering
+- Displays repeat frequency badge (🔁) for recurring tasks
+- Edit repeat frequency in edit mode via dropdown
 
 **[components/WeeklyView.tsx](components/WeeklyView.tsx)** - Calendar view:
 - Tasks organized by week based on due dates
@@ -113,6 +123,7 @@ Tasks are persisted as Markdown files in the `data/` directory. Each `.md` file 
 - Modal for adding new tasks or subtasks
 - Optional parent task support for nesting
 - Due date picker integration
+- Repeat frequency selector for recurring tasks
 
 ## Common Development Tasks
 
@@ -204,6 +215,13 @@ To add new inline features (like priority tags `#priority:high`):
 - **Indentation:** 4 spaces per nesting level, hardcoded in [lib/markdown-updater.ts](lib/markdown-updater.ts). Subtasks are indented one level deeper than their parent.
 
 - **Due Dates:** Stored inline as `#due:YYYY-MM-DD` and stripped during parsing for display. Must be preserved during all update operations.
+
+- **Recurring Tasks:** Stored inline as `#repeat:daily|weekly|monthly` and stripped during parsing for display. When a recurring task is marked as done:
+  - The current task is marked as complete (`[x]`)
+  - A new uncompleted task is automatically created with the same content and repeat frequency
+  - Due date is recalculated: daily (+1 day), weekly (+7 days), monthly (+1 month)
+  - New task is inserted in the same section as the original
+  - Handled by `handleRecurringTask()` in [lib/markdown-updater.ts](lib/markdown-updater.ts)
 
 - **Auto-section Creation:** When tasks are added, status sections are auto-created at end of file if they don't exist. Only create sections matching task status.
 

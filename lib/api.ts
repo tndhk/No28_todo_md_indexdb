@@ -1,4 +1,4 @@
-import { Task, TaskStatus, Project } from './types';
+import { Task, TaskStatus, Project, RepeatFrequency } from './types';
 import {
     validateProjectsResponse,
     ApiValidationError,
@@ -46,7 +46,8 @@ export async function addTask(
     content: string,
     status: TaskStatus,
     dueDate?: string,
-    parentLineNumber?: number
+    parentLineNumber?: number,
+    repeatFrequency?: RepeatFrequency
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
@@ -56,6 +57,7 @@ export async function addTask(
             status,
             dueDate,
             parentLineNumber,
+            repeatFrequency,
         }),
     });
 
@@ -80,6 +82,7 @@ export async function updateTask(
         content?: string;
         status?: TaskStatus;
         dueDate?: string;
+        repeatFrequency?: RepeatFrequency;
     }
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {

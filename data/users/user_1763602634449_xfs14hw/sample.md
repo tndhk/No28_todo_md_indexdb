@@ -7,3 +7,6 @@
     - [ ] Chapter 1 #due:2025-11-20
     - [ ] Chapter 2 #due:2025-11-21
 - [x] test #due:2025-11-19
+- [ ] test #due:2025-11-20 #repeat:weekly
+- 
+- [ ] repeat test #due:2025-11-20 #repeat:weekly

@@ -428,7 +428,8 @@ describe('API /api/v1/projects', () => {
         'Sanitized Task',
         'doing',
         '2025-12-25',
-        5
+        5,
+        undefined
       );
     });
 
@@ -444,6 +445,7 @@ describe('API /api/v1/projects', () => {
         mockProjects[0].path,
         'Simple Task',
         'todo',
+        undefined,
         undefined,
         undefined
       );

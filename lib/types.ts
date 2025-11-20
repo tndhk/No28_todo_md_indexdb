@@ -1,10 +1,12 @@
 export type TaskStatus = 'todo' | 'doing' | 'done';
+export type RepeatFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface Task {
     id: string;
     content: string;
     status: TaskStatus;
     dueDate?: string; // YYYY-MM-DD
+    repeatFrequency?: RepeatFrequency; // For recurring tasks
     subtasks: Task[];
     parentId?: string;
     parentContent?: string; // Parent task content for display

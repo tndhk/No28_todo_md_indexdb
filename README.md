@@ -8,6 +8,7 @@ A modern task management application that stores all data as Markdown files. Thi
 - 📅 Calendar View - tasks organized by due date for weekly planning
 - ✅ Inline task editing - double-click to edit, auto-save on blur
 - 🏷️ Due date support - plan tasks with deadline tracking
+- 🔁 Recurring tasks - automatically recreate daily, weekly, or monthly tasks
 - 📦 Subtask support - organize complex tasks into nested subtasks
 - 🎨 Clean, modern UI - built with React and Next.js
 
@@ -77,9 +78,11 @@ Tasks are stored as Markdown files in the `data/` directory:
 
 ## Todo
 - [ ] Buy groceries #due:2025-11-23
+- [ ] Take vitamins #due:2025-11-20 #repeat:daily
 - [ ] Read a book
     - [ ] Chapter 1 #due:2025-11-20
     - [ ] Chapter 2 #due:2025-11-21
+- [ ] Weekly team meeting #due:2025-11-22 #repeat:weekly
 
 ## Doing
 - [ ] Implement feature
@@ -91,6 +94,7 @@ Tasks are stored as Markdown files in the `data/` directory:
 **Format Rules:**
 - Tasks use checkboxes: `[ ]` (incomplete) or `[x]` (complete)
 - Due dates: `#due:YYYY-MM-DD` (inline tag)
+- Repeat frequency: `#repeat:daily`, `#repeat:weekly`, or `#repeat:monthly` (inline tag)
 - Nesting: 4 spaces per indentation level
 - Status sections are optional and auto-created
 
@@ -114,7 +118,16 @@ Tasks are stored as Markdown files in the `data/` directory:
 1. Click "Add Task" button in Tree View
 2. Or right-click a task and select "Add Subtask"
 3. Fill in task name and optional due date
-4. Click "Add" to save
+4. Optionally select repeat frequency (None, Daily, Weekly, Monthly)
+5. Click "Add" to save
+
+### Recurring Tasks
+- Set repeat frequency when creating or editing tasks
+- When a recurring task is marked complete:
+  - Current task is checked off as done
+  - New task is automatically created with next due date
+  - Daily: +1 day, Weekly: +7 days, Monthly: +1 month
+- Recurring tasks display 🔁 badge with frequency
 
 ## Technology Stack
 
@@ -151,7 +164,8 @@ curl -X POST http://localhost:3000/api/projects \
     "action": "add",
     "projectId": "sample",
     "content": "New task",
-    "dueDate": "2025-12-31"
+    "dueDate": "2025-12-31",
+    "repeatFrequency": "weekly"
   }'
 ```
 

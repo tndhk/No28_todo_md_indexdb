@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { TaskStatus } from '@/lib/types';
+import { TaskStatus, RepeatFrequency } from '@/lib/types';
 import styles from './AddTaskModal.module.css';
 
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (content: string, status: TaskStatus, dueDate?: string) => void;
+    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => void;
     defaultStatus?: TaskStatus;
     isSubtask?: boolean;
 }
@@ -22,15 +22,22 @@ export default function AddTaskModal({
     const [content, setContent] = useState('');
     const [status, setStatus] = useState<TaskStatus>(defaultStatus);
     const [dueDate, setDueDate] = useState('');
+    const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (content.trim()) {
-            onAdd(content, status, dueDate || undefined);
+            onAdd(
+                content,
+                status,
+                dueDate || undefined,
+                repeatFrequency ? (repeatFrequency as RepeatFrequency) : undefined
+            );
             setContent('');
             setDueDate('');
+            setRepeatFrequency('');
             setStatus(defaultStatus);
             onClose();
         }
@@ -80,6 +87,21 @@ export default function AddTaskModal({
                             onChange={(e) => setDueDate(e.target.value)}
                             className={styles.input}
                         />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor="repeatFrequency">Repeat (Optional)</label>
+                        <select
+                            id="repeatFrequency"
+                            value={repeatFrequency || ''}
+                            onChange={(e) => setRepeatFrequency(e.target.value as RepeatFrequency | '')}
+                            className={styles.select}
+                        >
+                            <option value="">None</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
                     </div>
 
                     <div className={styles.actions}>

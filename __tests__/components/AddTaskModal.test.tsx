@@ -145,7 +145,8 @@ describe('AddTaskModal', () => {
       expect(defaultProps.onAdd).toHaveBeenCalledWith(
         'Test task',
         'doing',
-        '2025-12-25'
+        '2025-12-25',
+        undefined
       );
     });
 
@@ -161,6 +162,7 @@ describe('AddTaskModal', () => {
       expect(defaultProps.onAdd).toHaveBeenCalledWith(
         'Task without date',
         'todo',
+        undefined,
         undefined
       );
     });
@@ -237,7 +239,7 @@ describe('AddTaskModal', () => {
       const contentInput = screen.getByLabelText('Task Content');
       await userEvent.type(contentInput, 'Test task{Enter}');
 
-      expect(defaultProps.onAdd).toHaveBeenCalledWith('Test task', 'todo', undefined);
+      expect(defaultProps.onAdd).toHaveBeenCalledWith('Test task', 'todo', undefined, undefined);
     });
   });
 
@@ -333,7 +335,7 @@ describe('AddTaskModal', () => {
       await userEvent.type(contentInput, longContent);
       await userEvent.click(submitButton);
 
-      expect(defaultProps.onAdd).toHaveBeenCalledWith(longContent, 'todo', undefined);
+      expect(defaultProps.onAdd).toHaveBeenCalledWith(longContent, 'todo', undefined, undefined);
     });
 
     it('should handle special characters in content', async () => {
@@ -349,6 +351,7 @@ describe('AddTaskModal', () => {
       expect(defaultProps.onAdd).toHaveBeenCalledWith(
         specialContent,
         'todo',
+        undefined,
         undefined
       );
     });

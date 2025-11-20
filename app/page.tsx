@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Project, Task, TaskStatus } from '@/lib/types';
+import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
@@ -156,6 +156,7 @@ export default function Home() {
         content: updates.content,
         dueDate: updates.dueDate,
         status: updates.status,
+        repeatFrequency: updates.repeatFrequency,
       });
       setProjects(updatedProjects);
     } catch (error) {
@@ -183,7 +184,7 @@ export default function Home() {
     }
   };
 
-  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string) => {
+  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => {
     if (!currentProjectId) return;
 
     try {
@@ -192,7 +193,8 @@ export default function Home() {
         content,
         status,
         dueDate,
-        modalParentTask?.lineNumber
+        modalParentTask?.lineNumber,
+        repeatFrequency
       );
       setProjects(updatedProjects);
       showToast('success', 'Task added successfully');
