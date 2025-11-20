@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAllProjects } from '@/lib/markdown';
+import { getAllProjectsFromDir } from '@/lib/markdown';
 import { apiLogger, logError } from '@/lib/logger';
 import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
+import { auth, getUserDataDir } from '@/lib/auth';
 import * as Sentry from '@sentry/nextjs';
 
 /**
@@ -17,8 +18,24 @@ export async function GET() {
     });
 
     try {
-        const projects = await getAllProjects();
-        transaction.end(200, { projectCount: projects.length });
+        // Get session and user-specific data directory
+        const session = await auth();
+        const userId = session?.user?.id;
+
+        // Ensure user is authenticated
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const dataDir = getUserDataDir(userId);
+
+        apiLogger.debug({ requestId, userId, dataDir }, 'Fetching projects');
+
+        const projects = await getAllProjectsFromDir(dataDir);
+        transaction.end(200, { projectCount: projects.length, userId });
         return NextResponse.json(projects);
     } catch (error) {
         logError(error, { operation: 'GET /api/v1/projects', requestId }, apiLogger);

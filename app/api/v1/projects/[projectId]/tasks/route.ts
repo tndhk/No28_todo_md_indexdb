@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjects } from '@/lib/markdown';
+import { getAllProjectsFromDir } from '@/lib/markdown';
 import { addTask } from '@/lib/markdown-updater';
 import { TaskStatus } from '@/lib/types';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/lib/security';
 import { apiLogger, logError } from '@/lib/logger';
 import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
+import { auth, getUserDataDir } from '@/lib/auth';
 import * as Sentry from '@sentry/nextjs';
 
 interface RouteContext {
@@ -41,9 +42,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const body = await request.json();
         const { content, status, dueDate, parentLineNumber } = body;
 
+        // Get session and user-specific data directory
+        const session = await auth();
+        const userId = session?.user?.id;
+        const dataDir = getUserDataDir(userId);
+
         apiLogger.debug({
             requestId,
             projectId,
+            userId,
             status,
             hasParent: !!parentLineNumber,
         }, `Creating new task in project ${projectId}`);
@@ -58,7 +65,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         // Find project
-        const projects = await getAllProjects();
+        const projects = await getAllProjectsFromDir(dataDir);
         const project = projects.find((p) => p.id === projectId);
 
         if (!project) {
@@ -120,9 +127,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         // Return updated projects
-        const updatedProjects = await getAllProjects();
-        apiLogger.info({ requestId, projectId }, `Successfully created task in project ${projectId}`);
-        transaction.end(201, { projectId });
+        const updatedProjects = await getAllProjectsFromDir(dataDir);
+        apiLogger.info({ requestId, projectId, userId }, `Successfully created task in project ${projectId}`);
+        transaction.end(201, { projectId, userId });
         return NextResponse.json(updatedProjects, { status: 201 });
     } catch (error) {
         logError(error, { operation: 'POST /api/v1/projects/tasks', requestId, projectId }, apiLogger);

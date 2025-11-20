@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjects } from '@/lib/markdown';
+import { getAllProjectsFromDir } from '@/lib/markdown';
 import { validateProjectId } from '@/lib/security';
+import { auth, getUserDataDir } from '@/lib/auth';
 
 interface RouteContext {
     params: Promise<{
@@ -26,7 +27,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
             );
         }
 
-        const projects = await getAllProjects();
+        // Get session and user-specific data directory
+        const session = await auth();
+        const userId = session?.user?.id;
+        const dataDir = getUserDataDir(userId);
+
+        const projects = await getAllProjectsFromDir(dataDir);
         const project = projects.find((p) => p.id === projectId);
 
         if (!project) {
