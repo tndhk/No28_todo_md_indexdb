@@ -178,3 +178,21 @@
     transform: scale(1.05) rotate(-2deg);
     z-index: 1000;
 }
+
+.parentContent {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-bottom: 0.25rem;
+    font-style: italic;
+}
+
+.repeatBadge {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--foreground);
+    background: rgba(34, 197, 94, 0.15);
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--radius-sm);
+    margin-left: 0.5rem;
+    font-weight: 500;
+}
