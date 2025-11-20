@@ -85,6 +85,7 @@ describe('API /api/projects', () => {
         'New Task',
         'todo',
         undefined,
+        undefined,
         undefined
       );
     });
@@ -111,6 +112,7 @@ describe('API /api/projects', () => {
         'Task with date',
         'todo',
         '2025-12-25',
+        undefined,
         undefined
       );
     });
