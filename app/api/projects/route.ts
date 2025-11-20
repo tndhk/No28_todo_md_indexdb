@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects } from '@/lib/markdown';
-import { updateMarkdown, addTask, deleteTask, updateTask, rewriteMarkdown } from '@/lib/markdown-updater';
-import { TaskStatus } from '@/lib/types';
+import { updateMarkdown, addTask, deleteTask, updateTask, rewriteMarkdown, handleRecurringTask } from '@/lib/markdown-updater';
+import { TaskStatus, RepeatFrequency } from '@/lib/types';
 import {
     validateProjectId,
     validateTaskContent,
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { action, projectId, task, content, status, dueDate, parentLineNumber, updates, tasks } = body;
+        const { action, projectId, task, content, status, dueDate, parentLineNumber, updates, tasks, repeatFrequency } = body;
 
         apiLogger.debug({
             requestId,
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     const sanitizedContent = sanitizeContent(content);
-                    addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber);
+                    addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
                     return null;
                 }
 
@@ -154,7 +154,12 @@ export async function POST(request: NextRequest) {
                         }
                     }
 
-                    updateTask(project.path, task.lineNumber, updates);
+                    // Check if this is a recurring task being marked as done
+                    if (updates?.status === 'done' && task.repeatFrequency) {
+                        handleRecurringTask(project.path, task);
+                    } else {
+                        updateTask(project.path, task.lineNumber, updates);
+                    }
                     return null;
                 }
 

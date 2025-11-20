@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Project, Task, TaskStatus } from './types';
+import { Project, Task, TaskStatus, RepeatFrequency } from './types';
 import { getConfig } from './config';
 
 /**
@@ -64,7 +64,16 @@ export function parseMarkdown(id: string, content: string, filePath: string): Pr
             // Extract Due Date
             const dueMatch = textContent.match(/#due:(\d{4}-\d{2}-\d{2})/);
             const dueDate = dueMatch ? dueMatch[1] : undefined;
-            const content = textContent.replace(/#due:\d{4}-\d{2}-\d{2}/, '').trim();
+
+            // Extract Repeat Frequency
+            const repeatMatch = textContent.match(/#repeat:(daily|weekly|monthly)/);
+            const repeatFrequency = repeatMatch ? (repeatMatch[1] as RepeatFrequency) : undefined;
+
+            // Remove tags from content
+            const content = textContent
+                .replace(/#due:\d{4}-\d{2}-\d{2}/, '')
+                .replace(/#repeat:(daily|weekly|monthly)/, '')
+                .trim();
 
             // Handle Nesting
             while (taskStack.length > 0 && taskStack[taskStack.length - 1].indent >= indent) {
@@ -81,6 +90,7 @@ export function parseMarkdown(id: string, content: string, filePath: string): Pr
                 content,
                 status: isChecked ? 'done' : currentSection,
                 dueDate,
+                repeatFrequency,
                 subtasks: [],
                 parentId: taskStack.length > 0 ? taskStack[taskStack.length - 1].task.id : undefined,
                 parentContent,

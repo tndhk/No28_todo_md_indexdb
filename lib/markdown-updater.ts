@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Task, TaskStatus, Project } from './types';
+import { Task, TaskStatus, Project, RepeatFrequency } from './types';
 import { getConfig } from './config';
 
 export function updateMarkdown(filePath: string, tasks: Task[]): void {
@@ -28,7 +28,8 @@ export function updateMarkdown(filePath: string, tasks: Task[]): void {
             const indent = line.match(/^(\s*)/)?.[1] || '';
             const checkbox = task.status === 'done' ? '[x]' : '[ ]';
             const dueTag = task.dueDate ? ` #due:${task.dueDate}` : '';
-            return `${indent}- ${checkbox} ${task.content}${dueTag}`;
+            const repeatTag = task.repeatFrequency ? ` #repeat:${task.repeatFrequency}` : '';
+            return `${indent}- ${checkbox} ${task.content}${dueTag}${repeatTag}`;
         }
 
         return line;
@@ -40,7 +41,7 @@ export function updateMarkdown(filePath: string, tasks: Task[]): void {
 export function updateTask(
     filePath: string,
     lineNumber: number,
-    updates: { content?: string; status?: TaskStatus; dueDate?: string }
+    updates: { content?: string; status?: TaskStatus; dueDate?: string; repeatFrequency?: RepeatFrequency }
 ): void {
     const config = getConfig();
     const content = fs.readFileSync(filePath, config.fileEncoding);
@@ -60,15 +61,25 @@ export function updateTask(
         throw new Error('Invalid task line');
     }
 
-    const currentContent = taskMatch[3].replace(/#due:\d{4}-\d{2}-\d{2}/, '').trim();
+    const textContent = taskMatch[3];
+    const currentContent = textContent
+        .replace(/#due:\d{4}-\d{2}-\d{2}/, '')
+        .replace(/#repeat:(daily|weekly|monthly)/, '')
+        .trim();
+
+    // Extract current repeat frequency
+    const currentRepeatMatch = textContent.match(/#repeat:(daily|weekly|monthly)/);
+    const currentRepeatFrequency = currentRepeatMatch ? (currentRepeatMatch[1] as RepeatFrequency) : undefined;
 
     // Apply updates
     const newContent = updates.content !== undefined ? updates.content : currentContent;
     const newStatus = updates.status !== undefined ? updates.status : (currentCheckbox === 'x' ? 'done' : 'todo');
     const newCheckbox = newStatus === 'done' ? '[x]' : '[ ]';
     const newDueTag = updates.dueDate ? ` #due:${updates.dueDate}` : '';
+    const newRepeatFrequency = updates.repeatFrequency !== undefined ? updates.repeatFrequency : currentRepeatFrequency;
+    const newRepeatTag = newRepeatFrequency ? ` #repeat:${newRepeatFrequency}` : '';
 
-    lines[lineNumber - 1] = `${indent}- ${newCheckbox} ${newContent}${newDueTag}`;
+    lines[lineNumber - 1] = `${indent}- ${newCheckbox} ${newContent}${newDueTag}${newRepeatTag}`;
 
     fs.writeFileSync(filePath, lines.join('\n'), config.fileEncoding);
 }
@@ -78,7 +89,8 @@ export function addTask(
     content: string,
     status: TaskStatus = 'todo',
     dueDate?: string,
-    parentLineNumber?: number
+    parentLineNumber?: number,
+    repeatFrequency?: RepeatFrequency
 ): void {
     const config = getConfig();
     const fileContent = fs.readFileSync(filePath, config.fileEncoding);
@@ -86,7 +98,8 @@ export function addTask(
 
     const checkbox = status === 'done' ? '[x]' : '[ ]';
     const dueTag = dueDate ? ` #due:${dueDate}` : '';
-    const newTaskLine = `- ${checkbox} ${content}${dueTag}`;
+    const repeatTag = repeatFrequency ? ` #repeat:${repeatFrequency}` : '';
+    const newTaskLine = `- ${checkbox} ${content}${dueTag}${repeatTag}`;
     const indentUnit = ' '.repeat(config.indentSpaces);
 
     if (parentLineNumber) {
@@ -186,7 +199,8 @@ export function rewriteMarkdown(filePath: string, project: Project): void {
             const indent = indentUnit.repeat(indentLevel);
             const checkbox = task.status === 'done' ? '[x]' : '[ ]';
             const dueTag = task.dueDate ? ` #due:${task.dueDate}` : '';
-            lines.push(`${indent}- ${checkbox} ${task.content}${dueTag}`);
+            const repeatTag = task.repeatFrequency ? ` #repeat:${task.repeatFrequency}` : '';
+            lines.push(`${indent}- ${checkbox} ${task.content}${dueTag}${repeatTag}`);
 
             if (task.subtasks.length > 0) {
                 writeTasks(task.subtasks, indentLevel + 1);
@@ -222,4 +236,60 @@ export function rewriteMarkdown(filePath: string, project: Project): void {
 
     // Write to file
     fs.writeFileSync(filePath, lines.join('\n'), config.fileEncoding);
+}
+
+/**
+ * Calculate the next due date based on repeat frequency
+ */
+export function calculateNextDueDate(currentDueDate: string, repeatFrequency: RepeatFrequency): string {
+    const date = new Date(currentDueDate + 'T00:00:00');
+
+    switch (repeatFrequency) {
+        case 'daily':
+            date.setDate(date.getDate() + 1);
+            break;
+        case 'weekly':
+            date.setDate(date.getDate() + 7);
+            break;
+        case 'monthly':
+            date.setMonth(date.getMonth() + 1);
+            break;
+    }
+
+    // Format as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Handle recurring task completion
+ * Marks the task as done and creates a new recurring task with the next due date
+ */
+export function handleRecurringTask(
+    filePath: string,
+    task: Task
+): void {
+    if (!task.repeatFrequency) {
+        throw new Error('Task does not have a repeat frequency');
+    }
+
+    // Mark current task as done
+    updateTask(filePath, task.lineNumber, { status: 'done' });
+
+    // Calculate next due date
+    const nextDueDate = task.dueDate
+        ? calculateNextDueDate(task.dueDate, task.repeatFrequency)
+        : undefined;
+
+    // Add new recurring task with same content, repeat frequency, but new due date
+    addTask(
+        filePath,
+        task.content,
+        'todo',
+        nextDueDate,
+        task.parentId ? parseInt(task.parentId.split('-').pop() || '0') : undefined,
+        task.repeatFrequency
+    );
 }

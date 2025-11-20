@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjectsFromDir } from '@/lib/markdown';
-import { updateTask, deleteTask } from '@/lib/markdown-updater';
-import { TaskStatus } from '@/lib/types';
+import { updateTask, deleteTask, handleRecurringTask } from '@/lib/markdown-updater';
+import { TaskStatus, RepeatFrequency, Task } from '@/lib/types';
 import {
     validateProjectId,
     validateTaskContent,
@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         const projectId = params.projectId;
         const lineNumber = parseInt(params.lineNumber, 10);
         const body = await request.json();
-        const { content, status, dueDate } = body;
+        const { content, status, dueDate, repeatFrequency } = body;
 
         // Validate project ID
         const projectIdValidation = validateProjectId(projectId);
@@ -75,9 +75,26 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             );
         }
 
+        // Helper to find task by line number
+        const findTaskByLineNumber = (tasks: Task[], targetLineNumber: number): Task | undefined => {
+            for (const task of tasks) {
+                if (task.lineNumber === targetLineNumber) {
+                    return task;
+                }
+                if (task.subtasks.length > 0) {
+                    const found = findTaskByLineNumber(task.subtasks, targetLineNumber);
+                    if (found) return found;
+                }
+            }
+            return undefined;
+        };
+
+        // Find the task
+        const task = findTaskByLineNumber(project.tasks, lineNumber);
+
         // Use file locking
         const result = await withFileLock(project.path, async () => {
-            const updates: { content?: string; status?: TaskStatus; dueDate?: string } = {};
+            const updates: { content?: string; status?: TaskStatus; dueDate?: string; repeatFrequency?: RepeatFrequency } = {};
 
             // Validate and prepare updates
             if (content !== undefined) {
@@ -104,7 +121,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
                 updates.dueDate = dueDate;
             }
 
-            updateTask(project.path, lineNumber, updates);
+            if (repeatFrequency !== undefined) {
+                updates.repeatFrequency = repeatFrequency as RepeatFrequency;
+            }
+
+            // Check if this is a recurring task being marked as done
+            if (status === 'done' && task && task.repeatFrequency) {
+                handleRecurringTask(project.path, task);
+            } else {
+                updateTask(project.path, lineNumber, updates);
+            }
             return null;
         });
 

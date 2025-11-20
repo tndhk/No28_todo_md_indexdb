@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjectsFromDir } from '@/lib/markdown';
 import { addTask } from '@/lib/markdown-updater';
-import { TaskStatus } from '@/lib/types';
+import { TaskStatus, RepeatFrequency } from '@/lib/types';
 import {
     validateProjectId,
     validateTaskContent,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     try {
         const body = await request.json();
-        const { content, status, dueDate, parentLineNumber } = body;
+        const { content, status, dueDate, parentLineNumber, repeatFrequency } = body;
 
         // Get session and user-specific data directory
         const session = await auth();
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             }
 
             const sanitizedContent = sanitizeContent(content);
-            addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber);
+            addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
             return null;
         });
 
