@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjects } from '@/lib/markdown';
+import { getAllProjectsFromDir } from '@/lib/markdown';
 import { rewriteMarkdown } from '@/lib/markdown-updater';
 import { Task } from '@/lib/types';
 import {
@@ -7,6 +7,7 @@ import {
     validateFilePath,
     withFileLock,
 } from '@/lib/security';
+import { auth, getUserDataDir } from '@/lib/auth';
 
 interface RouteContext {
     params: Promise<{
@@ -42,8 +43,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             );
         }
 
+        // Get session and user-specific data directory
+        const session = await auth();
+        const userId = session?.user?.id;
+        const dataDir = getUserDataDir(userId);
+
         // Find project
-        const projects = await getAllProjects();
+        const projects = await getAllProjectsFromDir(dataDir);
         const project = projects.find((p) => p.id === projectId);
 
         if (!project) {
@@ -69,7 +75,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         });
 
         // Return updated projects
-        const updatedProjects = await getAllProjects();
+        const updatedProjects = await getAllProjectsFromDir(dataDir);
         return NextResponse.json(updatedProjects);
     } catch (error) {
         console.error('Error reordering tasks:', error);

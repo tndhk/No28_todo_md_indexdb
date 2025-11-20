@@ -8,6 +8,7 @@ import WeeklyView from '@/components/WeeklyView';
 import AddTaskModal from '@/components/AddTaskModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import UserMenu from '@/components/UserMenu';
 import { triggerConfetti } from '@/lib/confetti';
 import {
   fetchProjects,
@@ -226,6 +227,7 @@ export default function Home() {
             <h1 className={styles.projectTitle}>
               {currentProject?.title || 'Select a project'}
             </h1>
+            <UserMenu />
           </header>
 
           <div className={styles.content}>

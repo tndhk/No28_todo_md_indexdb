@@ -3,16 +3,29 @@ import path from 'path';
 import { Project, Task, TaskStatus } from './types';
 import { getConfig } from './config';
 
+/**
+ * Get all projects from the default data directory
+ */
 export async function getAllProjects(): Promise<Project[]> {
     const config = getConfig();
+    return getAllProjectsFromDir(config.dataDir);
+}
 
-    if (!fs.existsSync(config.dataDir)) {
+/**
+ * Get all projects from a specific data directory
+ * @param dataDir - The directory to read projects from
+ */
+export async function getAllProjectsFromDir(dataDir: string): Promise<Project[]> {
+    const config = getConfig();
+
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
         return [];
     }
-    const files = fs.readdirSync(config.dataDir).filter((file) => file.endsWith('.md'));
+    const files = fs.readdirSync(dataDir).filter((file) => file.endsWith('.md'));
     return files.map((file) => {
-        const content = fs.readFileSync(path.join(config.dataDir, file), config.fileEncoding);
-        return parseMarkdown(file.replace('.md', ''), content, path.join(config.dataDir, file));
+        const content = fs.readFileSync(path.join(dataDir, file), config.fileEncoding);
+        return parseMarkdown(file.replace('.md', ''), content, path.join(dataDir, file));
     });
 }
 
