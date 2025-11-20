@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects } from '@/lib/markdown';
-import { updateMarkdown, addTask, deleteTask, updateTask, rewriteMarkdown, handleRecurringTask } from '@/lib/markdown-updater';
+import { updateMarkdown, addTask as addTaskFile, deleteTask as deleteTaskFile, updateTask as updateTaskFile, rewriteMarkdown, handleRecurringTask as handleRecurringTaskFile } from '@/lib/markdown-updater';
+import { addTask as addTaskDB, deleteTask as deleteTaskDB, updateTask as updateTaskDB, reorderTasks as reorderTasksDB, handleRecurringTask as handleRecurringTaskDB } from '@/lib/supabase-adapter';
 import { TaskStatus, RepeatFrequency } from '@/lib/types';
 import {
     validateProjectId,
@@ -15,6 +16,13 @@ import {
 import { apiLogger, logError } from '@/lib/logger';
 import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
 import * as Sentry from '@sentry/nextjs';
+
+// Check if Supabase is configured
+const useSupabase = !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export async function GET() {
     const requestId = generateRequestId();
@@ -72,15 +80,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Project not found' }, { status: 404 });
         }
 
-        // Validate file path to prevent path traversal
-        if (!validateFilePath(project.path)) {
+        // Validate file path to prevent path traversal (file mode only)
+        if (!useSupabase && !validateFilePath(project.path)) {
             apiLogger.warn({ requestId, projectId, path: project.path }, 'Invalid file path - possible path traversal');
             transaction.end(400, { action, error: 'invalid_file_path' });
             return NextResponse.json({ error: 'Invalid file path' }, { status: 400 });
         }
 
-        // Use file locking to prevent race conditions
-        const result = await withFileLock(project.path, async () => {
+        // Execute operations (with file locking for file mode, direct for Supabase)
+        const executeOperation = async () => {
             switch (action) {
                 case 'add': {
                     // Validate content
@@ -110,23 +118,40 @@ export async function POST(request: NextRequest) {
                     }
 
                     const sanitizedContent = sanitizeContent(content);
-                    addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
+
+                    if (useSupabase) {
+                        // Supabase mode: use task ID for parent
+                        const parentId = task?.parentId; // parentId passed from client
+                        await addTaskDB(projectId, sanitizedContent, status as TaskStatus, dueDate, parentId, repeatFrequency as RepeatFrequency);
+                    } else {
+                        // File mode: use line number for parent
+                        addTaskFile(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
+                    }
                     return null;
                 }
 
                 case 'update':
-                    updateMarkdown(project.path, project.tasks);
+                    if (!useSupabase) {
+                        updateMarkdown(project.path, project.tasks);
+                    }
+                    // Supabase mode: no-op (updates happen per-task)
                     return null;
 
                 case 'updateTask': {
-                    if (!task?.lineNumber) {
-                        return { error: 'Line number required', status: 400 };
+                    if (!task?.id) {
+                        return { error: 'Task ID required', status: 400 };
                     }
 
-                    // Validate line number
-                    const lineValidation = validateLineNumber(task.lineNumber);
-                    if (!lineValidation.valid) {
-                        return { error: lineValidation.error, status: 400 };
+                    // Validate line number for file mode
+                    if (!useSupabase && !task?.lineNumber) {
+                        return { error: 'Line number required for file mode', status: 400 };
+                    }
+
+                    if (!useSupabase) {
+                        const lineValidation = validateLineNumber(task.lineNumber);
+                        if (!lineValidation.valid) {
+                            return { error: lineValidation.error, status: 400 };
+                        }
                     }
 
                     // Validate updates
@@ -156,25 +181,43 @@ export async function POST(request: NextRequest) {
 
                     // Check if this is a recurring task being marked as done
                     if (updates?.status === 'done' && task.repeatFrequency) {
-                        handleRecurringTask(project.path, task);
+                        if (useSupabase) {
+                            await handleRecurringTaskDB(task);
+                        } else {
+                            handleRecurringTaskFile(project.path, task);
+                        }
                     } else {
-                        updateTask(project.path, task.lineNumber, updates);
+                        if (useSupabase) {
+                            await updateTaskDB(task.id, updates);
+                        } else {
+                            updateTaskFile(project.path, task.lineNumber, updates);
+                        }
                     }
                     return null;
                 }
 
                 case 'delete': {
-                    if (!task?.lineNumber) {
-                        return { error: 'Line number required', status: 400 };
+                    if (!task?.id) {
+                        return { error: 'Task ID required', status: 400 };
                     }
 
-                    // Validate line number
-                    const lineValidation = validateLineNumber(task.lineNumber);
-                    if (!lineValidation.valid) {
-                        return { error: lineValidation.error, status: 400 };
+                    // Validate line number for file mode
+                    if (!useSupabase && !task?.lineNumber) {
+                        return { error: 'Line number required for file mode', status: 400 };
                     }
 
-                    deleteTask(project.path, task.lineNumber);
+                    if (!useSupabase) {
+                        const lineValidation = validateLineNumber(task.lineNumber);
+                        if (!lineValidation.valid) {
+                            return { error: lineValidation.error, status: 400 };
+                        }
+                    }
+
+                    if (useSupabase) {
+                        await deleteTaskDB(task.id);
+                    } else {
+                        deleteTaskFile(project.path, task.lineNumber);
+                    }
                     return null;
                 }
 
@@ -182,15 +225,25 @@ export async function POST(request: NextRequest) {
                     if (!tasks || !Array.isArray(tasks)) {
                         return { error: 'Tasks array required for reordering', status: 400 };
                     }
-                    // Create a temporary project object with new tasks
-                    const updatedProject = { ...project, tasks };
-                    rewriteMarkdown(project.path, updatedProject);
+
+                    if (useSupabase) {
+                        await reorderTasksDB(projectId, tasks);
+                    } else {
+                        // Create a temporary project object with new tasks
+                        const updatedProject = { ...project, tasks };
+                        rewriteMarkdown(project.path, updatedProject);
+                    }
                     return null;
 
                 default:
                     return { error: 'Invalid action', status: 400 };
             }
-        });
+        };
+
+        // Execute with file locking for file mode, directly for Supabase
+        const result = useSupabase
+            ? await executeOperation()
+            : await withFileLock(project.path, executeOperation);
 
         // Check for validation errors from within the lock
         if (result && result.error) {

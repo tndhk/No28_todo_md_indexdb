@@ -2,13 +2,31 @@ import fs from 'fs';
 import path from 'path';
 import { Project, Task, TaskStatus, RepeatFrequency } from './types';
 import { getConfig } from './config';
+import { getAllProjects as getAllProjectsFromDB } from './supabase-adapter';
+import { auth } from '@/auth';
 
 /**
- * Get all projects from the default data directory
+ * Get all projects - uses Supabase by default, falls back to files if not configured
  */
 export async function getAllProjects(): Promise<Project[]> {
-    const config = getConfig();
-    return getAllProjectsFromDir(config.dataDir);
+    // Check if Supabase is configured
+    const useSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+                       process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (useSupabase) {
+        // Get user from NextAuth session
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new Error('Unauthorized: No user session found');
+        }
+
+        return getAllProjectsFromDB(session.user.id);
+    } else {
+        // Fallback to file-based storage
+        const config = getConfig();
+        return getAllProjectsFromDir(config.dataDir);
+    }
 }
 
 /**
