@@ -9,12 +9,16 @@ import { z } from 'zod';
 // Task status enum schema
 export const TaskStatusSchema = z.enum(['todo', 'doing', 'done']);
 
+// Repeat frequency enum schema
+export const RepeatFrequencySchema = z.enum(['daily', 'weekly', 'monthly']);
+
 // Base task schema (without subtasks for recursive definition)
 const BaseTaskSchema = z.object({
     id: z.string(),
     content: z.string(),
     status: TaskStatusSchema,
     dueDate: z.string().optional(),
+    repeatFrequency: RepeatFrequencySchema.optional(),
     parentId: z.string().optional(),
     parentContent: z.string().optional(),
     rawLine: z.string(),
