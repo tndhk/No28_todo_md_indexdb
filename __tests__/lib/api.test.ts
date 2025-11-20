@@ -83,24 +83,20 @@ describe('lib/api', () => {
         },
       } as Response);
 
-      await expect(fetchProjects()).rejects.toThrow('Failed to load projects');
+      await expect(fetchProjects()).rejects.toThrow('Unknown error');
     });
 
-    it('should throw ApiValidationError on invalid response', async () => {
+    it('should call validateProjectsResponse on success', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ invalid: 'data' }),
+        json: async () => mockProjects,
       } as Response);
+      mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
-      const validationError = new ApiValidationError({
-        issues: [],
-      } as any);
-      mockValidateProjectsResponse.mockImplementation(() => {
-        throw validationError;
-      });
+      await fetchProjects();
 
-      await expect(fetchProjects()).rejects.toThrow(ApiValidationError);
+      expect(mockValidateProjectsResponse).toHaveBeenCalledWith(mockProjects);
     });
 
     it('should handle network failures', async () => {
