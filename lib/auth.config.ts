@@ -19,9 +19,10 @@ export const authConfig: NextAuthConfig = {
                 return true;
             }
 
-            // Protect API routes
+            // For API routes, allow the request to reach the handler
+            // The handler will check authentication and return 401 if needed
             if (isOnApi) {
-                return isLoggedIn;
+                return true;
             }
 
             // Protect dashboard
