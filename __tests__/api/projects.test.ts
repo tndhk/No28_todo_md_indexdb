@@ -220,7 +220,7 @@ describe('API /api/projects', () => {
         body: JSON.stringify({
           action: 'updateTask',
           projectId: 'test',
-          task: { lineNumber: 4 },
+          task: { id: 'test-4', lineNumber: 4 },
           updates: { content: 'Updated content' },
         }),
       });
@@ -239,7 +239,7 @@ describe('API /api/projects', () => {
         body: JSON.stringify({
           action: 'updateTask',
           projectId: 'test',
-          task: { lineNumber: 4 },
+          task: { id: 'test-4', lineNumber: 4 },
           updates: { status: 'done' },
         }),
       });
@@ -250,7 +250,7 @@ describe('API /api/projects', () => {
       expect(mockMarkdownUpdater.updateTask).toHaveBeenCalled();
     });
 
-    it('should reject missing line number', async () => {
+    it('should reject missing task ID', async () => {
       const request = new NextRequest('http://localhost/api/projects', {
         method: 'POST',
         body: JSON.stringify({
@@ -265,7 +265,7 @@ describe('API /api/projects', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Line number required');
+      expect(data.error).toContain('Task ID required');
     });
   });
 
@@ -289,7 +289,7 @@ describe('API /api/projects', () => {
         body: JSON.stringify({
           action: 'delete',
           projectId: 'test',
-          task: { lineNumber: 4 },
+          task: { id: 'test-4', lineNumber: 4 },
         }),
       });
 
@@ -299,7 +299,7 @@ describe('API /api/projects', () => {
       expect(mockMarkdownUpdater.deleteTask).toHaveBeenCalledWith(mockProject.path, 4);
     });
 
-    it('should reject missing line number', async () => {
+    it('should reject missing task ID', async () => {
       const request = new NextRequest('http://localhost/api/projects', {
         method: 'POST',
         body: JSON.stringify({
@@ -313,7 +313,7 @@ describe('API /api/projects', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Line number required');
+      expect(data.error).toContain('Task ID required');
     });
   });
 
