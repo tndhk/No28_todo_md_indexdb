@@ -122,7 +122,7 @@ export default function Home() {
     }
 
     try {
-      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.id, task.lineNumber, {
         status: newStatus,
       });
       setProjects(updatedProjects);
@@ -143,7 +143,7 @@ export default function Home() {
     updateCurrentProjectTasks(tasks => deleteTaskFromTree(tasks, task.id));
 
     try {
-      const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber);
+      const updatedProjects = await apiDeleteTask(currentProjectId, task.id, task.lineNumber);
       setProjects(updatedProjects);
       showToast('success', 'Task deleted successfully');
     } catch (error) {
@@ -163,7 +163,7 @@ export default function Home() {
     if (!currentProjectId) return;
 
     try {
-      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.id, task.lineNumber, {
         content: updates.content,
         dueDate: updates.dueDate,
         status: updates.status,

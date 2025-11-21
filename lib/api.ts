@@ -79,6 +79,7 @@ export async function addTask(
  */
 export async function updateTask(
     projectId: string,
+    taskId: string,
     lineNumber: number,
     updates: {
         content?: string;
@@ -93,7 +94,7 @@ export async function updateTask(
         body: JSON.stringify({
             action: 'updateTask',
             projectId,
-            task: { lineNumber },
+            task: { id: taskId, lineNumber },
             updates,
         }),
     });
@@ -114,6 +115,7 @@ export async function updateTask(
  */
 export async function deleteTask(
     projectId: string,
+    taskId: string,
     lineNumber: number
 ): Promise<Project[]> {
     const res = await fetch(`/api/projects`, {
@@ -122,7 +124,7 @@ export async function deleteTask(
         body: JSON.stringify({
             action: 'delete',
             projectId,
-            task: { lineNumber },
+            task: { id: taskId, lineNumber },
         }),
     });
 
