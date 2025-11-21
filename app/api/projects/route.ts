@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects } from '@/lib/markdown';
 import { updateMarkdown, addTask as addTaskFile, deleteTask as deleteTaskFile, updateTask as updateTaskFile, rewriteMarkdown, handleRecurringTask as handleRecurringTaskFile } from '@/lib/markdown-updater';
 import { addTask as addTaskDB, deleteTask as deleteTaskDB, updateTask as updateTaskDB, reorderTasks as reorderTasksDB, handleRecurringTask as handleRecurringTaskDB } from '@/lib/supabase-adapter';
-import { TaskStatus, RepeatFrequency } from '@/lib/types';
+import { TaskStatus, RepeatFrequency, Task } from '@/lib/types';
 import {
     validateProjectId,
     validateTaskContent,
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
                     if (updates?.status === 'done' && task.repeatFrequency) {
                         // For recurring tasks, we need the full task object with content
                         // Find the full task from the project
-                        const findFullTask = (tasks: any[]): any => {
+                        const findFullTask = (tasks: Task[]): Task | null => {
                             for (const t of tasks) {
                                 if (t.id === task.id) {
                                     return t;
