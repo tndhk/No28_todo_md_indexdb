@@ -28,7 +28,7 @@ const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
  * Check if Supabase should be used for user storage
  * Returns true if Supabase is configured and enabled
  */
-function useSupabase(): boolean {
+function shouldUseSupabase(): boolean {
     return !!supabaseAdmin && process.env.USE_SUPABASE === 'true';
 }
 
@@ -36,7 +36,7 @@ function useSupabase(): boolean {
  * Load users from storage (Supabase or file-based)
  */
 export async function loadUsers(): Promise<AppUser[]> {
-    if (useSupabase()) {
+    if (shouldUseSupabase()) {
         try {
             const { data, error } = await supabaseAdmin!
                 .from('users')
@@ -96,7 +96,7 @@ export async function loadUsers(): Promise<AppUser[]> {
  * Save users to storage (file-based only, Supabase uses individual operations)
  */
 export function saveUsers(users: AppUser[]): void {
-    if (useSupabase()) {
+    if (shouldUseSupabase()) {
         // Supabase uses individual insert/update operations, not bulk saves
         securityLogger.warn('saveUsers() called in Supabase mode - use individual operations instead');
         return;
@@ -113,7 +113,7 @@ export function saveUsers(users: AppUser[]): void {
  * Find a user by username
  */
 export async function findUserByUsername(username: string): Promise<AppUser | undefined> {
-    if (useSupabase()) {
+    if (shouldUseSupabase()) {
         try {
             const { data, error } = await supabaseAdmin!
                 .from('users')
@@ -134,7 +134,7 @@ export async function findUserByUsername(username: string): Promise<AppUser | un
                 dataDir: data.data_dir,
                 createdAt: data.created_at,
             };
-        } catch (error) {
+        } catch (_error) {
             return undefined;
         }
     } else {
@@ -147,7 +147,7 @@ export async function findUserByUsername(username: string): Promise<AppUser | un
  * Find a user by ID
  */
 export async function findUserById(id: string): Promise<AppUser | undefined> {
-    if (useSupabase()) {
+    if (shouldUseSupabase()) {
         try {
             const { data, error } = await supabaseAdmin!
                 .from('users')
@@ -168,7 +168,7 @@ export async function findUserById(id: string): Promise<AppUser | undefined> {
                 dataDir: data.data_dir,
                 createdAt: data.created_at,
             };
-        } catch (error) {
+        } catch (_error) {
             return undefined;
         }
     } else {
@@ -192,7 +192,7 @@ export async function createUser(
     // User-specific data directory path (for reference)
     const userDataDir = path.join(process.cwd(), 'data', 'users', id);
 
-    if (useSupabase()) {
+    if (shouldUseSupabase()) {
         // Check if user already exists
         const existingUser = await findUserByUsername(username);
         if (existingUser) {
@@ -307,7 +307,7 @@ export async function getUserDataDir(userId: string | undefined | null): Promise
     const user = await findUserById(userId);
     if (user && user.dataDir) {
         // Ensure directory exists (only for file-based storage)
-        if (!useSupabase() && !fs.existsSync(user.dataDir)) {
+        if (!shouldUseSupabase() && !fs.existsSync(user.dataDir)) {
             fs.mkdirSync(user.dataDir, { recursive: true });
         }
         return user.dataDir;
