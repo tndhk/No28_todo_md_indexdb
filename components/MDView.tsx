@@ -54,6 +54,7 @@ export default function MDView({ projectId, onSaveSuccess, onError }: MDViewProp
 
         async function loadContent() {
             setLoading(true);
+            console.log('[MDView] Loading content for projectId:', projectId);
             try {
                 const rawContent = await fetchRawMarkdown(projectId);
                 if (isMounted) {
@@ -63,6 +64,7 @@ export default function MDView({ projectId, onSaveSuccess, onError }: MDViewProp
                 }
             } catch (error) {
                 if (isMounted) {
+                    console.error('[MDView] Error loading content:', error);
                     onError(getErrorMessage(error));
                 }
             } finally {

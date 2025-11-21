@@ -151,7 +151,10 @@ export async function reorderTasks(
  * @throws {ApiError} if the API request fails
  */
 export async function fetchRawMarkdown(projectId: string): Promise<string> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`);
+    const url = `/api/v1/projects/${encodeURIComponent(projectId)}/raw`;
+    console.log('[fetchRawMarkdown] URL:', url, 'projectId:', projectId);
+
+    const res = await fetch(url);
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
