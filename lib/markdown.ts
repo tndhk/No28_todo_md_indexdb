@@ -9,10 +9,11 @@ import { auth } from './auth';
  * Get all projects - uses Supabase by default, falls back to files if not configured
  */
 export async function getAllProjects(): Promise<Project[]> {
-    // Check if Supabase is configured
-    const useSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
-                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-                       process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Check if Supabase is configured AND enabled
+    const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+                               process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+                               process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const useSupabase = supabaseConfigured && process.env.USE_SUPABASE === 'true';
 
     if (useSupabase) {
         // Get user from NextAuth session
