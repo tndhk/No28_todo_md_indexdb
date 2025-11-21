@@ -1,6 +1,6 @@
-import { supabaseAdmin, DbProject, DbTask } from './supabase-client';
+import { supabaseAdmin, DbTask } from './supabase-client';
 import { Project, Task, TaskStatus, RepeatFrequency } from './types';
-import { assignLineNumbers, assignRawLines, renderTaskLine } from './markdown-renderer';
+import { assignLineNumbers, assignRawLines } from './markdown-renderer';
 import { calculateNextDueDate } from './markdown-updater';
 
 /**

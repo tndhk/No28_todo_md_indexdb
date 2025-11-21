@@ -44,9 +44,6 @@ export function renderMarkdown(project: Project): string {
  * Recursively renders tasks to markdown lines
  */
 function renderTasks(tasks: Task[], lines: string[], indentLevel = 0) {
-    const config = getConfig();
-    const indent = ' '.repeat(config.indentSpaces).repeat(indentLevel);
-
     tasks.forEach(task => {
         const line = renderTaskLine(task, indentLevel);
         lines.push(line);
