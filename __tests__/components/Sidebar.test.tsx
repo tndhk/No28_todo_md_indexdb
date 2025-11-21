@@ -10,6 +10,7 @@ jest.mock('lucide-react', () => ({
   LayoutList: () => <div data-testid="layout-list-icon" />,
   Calendar: () => <div data-testid="calendar-icon" />,
   Code: () => <div data-testid="code-icon" />,
+  Plus: () => <div data-testid="plus-icon" />,
 }));
 
 // Mock CSS modules
@@ -19,7 +20,9 @@ jest.mock('@/components/Sidebar.module.css', () => ({
   title: 'title',
   nav: 'nav',
   navSection: 'navSection',
+  navSectionHeader: 'navSectionHeader',
   navTitle: 'navTitle',
+  addButton: 'addButton',
   navItem: 'navItem',
   active: 'active',
 }));
@@ -52,6 +55,7 @@ describe('Sidebar', () => {
     currentProjectId: 'project-1',
     onViewChange: jest.fn(),
     onProjectSelect: jest.fn(),
+    onCreateProject: jest.fn(),
   };
 
   beforeEach(() => {
@@ -388,6 +392,38 @@ describe('Sidebar', () => {
       const buttons = container.querySelectorAll('.navItem');
       // 3 views + 3 projects = 6 nav items
       expect(buttons.length).toBe(6);
+    });
+  });
+
+  describe('project creation', () => {
+    it('should render create project button', () => {
+      render(<Sidebar {...defaultProps} />);
+
+      const plusIcon = screen.getByTestId('plus-icon');
+      expect(plusIcon).toBeInTheDocument();
+    });
+
+    it('should call onCreateProject when create button is clicked', async () => {
+      render(<Sidebar {...defaultProps} />);
+
+      const createButton = screen.getByTitle('Create new project');
+      await userEvent.click(createButton);
+
+      expect(defaultProps.onCreateProject).toHaveBeenCalledTimes(1);
+    });
+
+    it('should render create button with correct title attribute', () => {
+      render(<Sidebar {...defaultProps} />);
+
+      const createButton = screen.getByTitle('Create new project');
+      expect(createButton).toBeInTheDocument();
+    });
+
+    it('should render create button as a button element', () => {
+      render(<Sidebar {...defaultProps} />);
+
+      const createButton = screen.getByTitle('Create new project');
+      expect(createButton.tagName).toBe('BUTTON');
     });
   });
 });

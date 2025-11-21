@@ -100,7 +100,7 @@ export default function CreateProjectModal({
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || !title.trim()}
+                            disabled={isSubmitting}
                             className={styles.submitButton}
                         >
                             {isSubmitting ? 'Creating...' : 'Create Project'}

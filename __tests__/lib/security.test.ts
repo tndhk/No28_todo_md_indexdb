@@ -2,6 +2,7 @@ import path from 'path';
 import {
   validateFilePath,
   validateProjectId,
+  validateProjectTitle,
   validateTaskContent,
   validateTaskStatus,
   validateDueDate,
@@ -68,6 +69,58 @@ describe('security', () => {
     it('should accept project ID at max length', () => {
       const result = validateProjectId('a'.repeat(100));
       expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('validateProjectTitle', () => {
+    it('should accept valid project title', () => {
+      const result = validateProjectTitle('My New Project');
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject empty title', () => {
+      const result = validateProjectTitle('');
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Project title is required');
+    });
+
+    it('should reject whitespace-only title', () => {
+      const result = validateProjectTitle('   ');
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Project title cannot be empty');
+    });
+
+    it('should reject title that is too long', () => {
+      const result = validateProjectTitle('a'.repeat(101));
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Project title is too long (max 100 characters)');
+    });
+
+    it('should accept title at max length', () => {
+      const result = validateProjectTitle('a'.repeat(100));
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept title with special characters', () => {
+      const result = validateProjectTitle('Project: #1 (v2.0)');
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept title with unicode characters', () => {
+      const result = validateProjectTitle('プロジェクト名');
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject null title', () => {
+      const result = validateProjectTitle(null as any);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Project title is required');
+    });
+
+    it('should reject non-string title', () => {
+      const result = validateProjectTitle(123 as any);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Project title is required');
     });
   });
 
