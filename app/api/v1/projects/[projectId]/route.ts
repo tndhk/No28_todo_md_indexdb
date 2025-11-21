@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getProject } from '@/lib/supabase-adapter';
 import { validateProjectId } from '@/lib/security';
 import { auth, getUserDataDir } from '@/lib/auth';
+
+// Check if Supabase is configured
+const useSupabase = !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    process.env.USE_SUPABASE === 'true'
+);
 
 interface RouteContext {
     params: Promise<{
@@ -27,13 +36,27 @@ export async function GET(request: NextRequest, context: RouteContext) {
             );
         }
 
-        // Get session and user-specific data directory
+        // Get session and user ID
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = await getUserDataDir(userId);
 
-        const projects = await getAllProjectsFromDir(dataDir);
-        const project = projects.find((p) => p.id === projectId);
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        let project;
+        if (useSupabase) {
+            // Use Supabase for project retrieval
+            project = await getProject(projectId, userId);
+        } else {
+            // Use file-based storage for local development
+            const dataDir = await getUserDataDir(userId);
+            const projects = await getAllProjectsFromDir(dataDir);
+            project = projects.find((p) => p.id === projectId);
+        }
 
         if (!project) {
             return NextResponse.json(

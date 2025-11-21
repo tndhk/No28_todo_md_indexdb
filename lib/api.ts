@@ -25,7 +25,7 @@ export class ApiError extends Error {
  * @throws {ApiValidationError} if response validation fails
  */
 export async function fetchProjects(): Promise<Project[]> {
-    const res = await fetch('/api/v1/projects');
+    const res = await fetch('/api/projects');
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -49,10 +49,12 @@ export async function addTask(
     parentLineNumber?: number,
     repeatFrequency?: RepeatFrequency
 ): Promise<Project[]> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks`, {
+    const res = await fetch(`/api/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            action: 'add',
+            projectId,
             content,
             status,
             dueDate,
@@ -85,10 +87,15 @@ export async function updateTask(
         repeatFrequency?: RepeatFrequency;
     }
 ): Promise<Project[]> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
-        method: 'PUT',
+    const res = await fetch(`/api/projects`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({
+            action: 'updateTask',
+            projectId,
+            task: { lineNumber },
+            updates,
+        }),
     });
 
     if (!res.ok) {
@@ -109,8 +116,14 @@ export async function deleteTask(
     projectId: string,
     lineNumber: number
 ): Promise<Project[]> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
-        method: 'DELETE',
+    const res = await fetch(`/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'delete',
+            projectId,
+            task: { lineNumber },
+        }),
     });
 
     if (!res.ok) {
@@ -131,10 +144,14 @@ export async function reorderTasks(
     projectId: string,
     tasks: Task[]
 ): Promise<Project[]> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/reorder`, {
-        method: 'PUT',
+    const res = await fetch(`/api/projects`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tasks }),
+        body: JSON.stringify({
+            action: 'reorder',
+            projectId,
+            tasks,
+        }),
     });
 
     if (!res.ok) {
@@ -151,7 +168,7 @@ export async function reorderTasks(
  * @throws {ApiError} if the API request fails
  */
 export async function fetchRawMarkdown(projectId: string): Promise<string> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`);
+    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -159,7 +176,7 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
     }
 
     const data = await res.json();
-    return data.content;
+    return data.raw || '';
 }
 
 /**
@@ -167,10 +184,14 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
  * @throws {ApiError} if the API request fails
  */
 export async function saveRawMarkdown(projectId: string, content: string): Promise<void> {
-    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`, {
-        method: 'PUT',
+    const res = await fetch(`/api/projects`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+            action: 'update',
+            projectId,
+            content,
+        }),
     });
 
     if (!res.ok) {

@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getAllProjects as getAllProjectsFromDB } from '@/lib/supabase-adapter';
 import { apiLogger, logError } from '@/lib/logger';
 import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
 import { auth, getUserDataDir } from '@/lib/auth';
 import * as Sentry from '@sentry/nextjs';
+
+// Check if Supabase is configured
+const useSupabase = !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    process.env.USE_SUPABASE === 'true'
+);
 
 /**
  * GET /api/v1/projects
@@ -30,11 +39,18 @@ export async function GET() {
             );
         }
 
-        const dataDir = await getUserDataDir(userId);
+        apiLogger.debug({ requestId, userId, useSupabase }, 'Fetching projects');
 
-        apiLogger.debug({ requestId, userId, dataDir }, 'Fetching projects');
+        let projects;
+        if (useSupabase) {
+            // Use Supabase for project retrieval
+            projects = await getAllProjectsFromDB(userId);
+        } else {
+            // Use file-based storage for local development
+            const dataDir = await getUserDataDir(userId);
+            projects = await getAllProjectsFromDir(dataDir);
+        }
 
-        const projects = await getAllProjectsFromDir(dataDir);
         transaction.end(200, { projectCount: projects.length, userId });
         return NextResponse.json(projects);
     } catch (error) {
