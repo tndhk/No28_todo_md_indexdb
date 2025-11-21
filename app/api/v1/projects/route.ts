@@ -30,7 +30,7 @@ export async function GET() {
             );
         }
 
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         apiLogger.debug({ requestId, userId, dataDir }, 'Fetching projects');
 

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         const projects = await getAllProjectsFromDir(dataDir);
         const project = projects.find((p) => p.id === projectId);
