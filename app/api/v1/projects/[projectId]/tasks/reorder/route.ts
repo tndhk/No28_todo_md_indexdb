@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         // Find project
         const projects = await getAllProjectsFromDir(dataDir);

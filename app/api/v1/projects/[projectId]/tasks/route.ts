@@ -45,7 +45,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         apiLogger.debug({
             requestId,

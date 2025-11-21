@@ -58,7 +58,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        securityLogger.error({ error }, 'Registration failed');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        securityLogger.error(
+            {
+                error: errorMessage,
+                stack: errorStack,
+                errorType: error?.constructor?.name
+            },
+            'Registration failed'
+        );
         return NextResponse.json(
             { error: 'Registration failed' },
             { status: 500 }

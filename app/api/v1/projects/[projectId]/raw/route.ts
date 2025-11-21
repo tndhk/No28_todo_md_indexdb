@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         // Build file path
         const filePath = path.join(dataDir, `${projectId}.md`);
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         // Get session and user-specific data directory
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = getUserDataDir(userId);
+        const dataDir = await getUserDataDir(userId);
 
         // Build file path
         const filePath = path.join(dataDir, `${projectId}.md`);
