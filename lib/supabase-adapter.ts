@@ -311,6 +311,24 @@ export async function addTask(
 }
 
 /**
+ * Delete all tasks for a project
+ */
+export async function deleteAllTasksForProject(projectId: string): Promise<void> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
+    const { error } = await supabaseAdmin
+        .from('tasks')
+        .delete()
+        .eq('project_id', projectId);
+
+    if (error) {
+        throw new Error(`Failed to delete all tasks for project: ${error.message}`);
+    }
+}
+
+/**
  * Delete a task and all its subtasks
  */
 export async function deleteTask(taskId: string): Promise<void> {

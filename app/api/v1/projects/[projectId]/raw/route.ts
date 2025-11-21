@@ -6,7 +6,7 @@ import { auth, getUserDataDir } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 import { renderMarkdown } from '@/lib/markdown-renderer';
 import { parseMarkdown } from '@/lib/markdown';
-import { getProject, updateTask, deleteTask, addTask } from '@/lib/supabase-adapter';
+import { getProject, updateTask, deleteTask, addTask, deleteAllTasksForProject } from '@/lib/supabase-adapter';
 import { getAllProjectsFromDir } from '@/lib/markdown';
 
 interface RouteContext {
@@ -164,66 +164,43 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             // Parse the Markdown content
             const parsedProject = parseMarkdown(projectId, content, '');
 
-            // Build map of existing tasks by ID for comparison
-            const existingTaskMap = new Map<string, any>();
-            function mapExistingTasks(tasks: any[]): void {
-                tasks.forEach(task => {
-                    existingTaskMap.set(task.id, task);
-                    if (task.subtasks && task.subtasks.length > 0) {
-                        mapExistingTasks(task.subtasks);
+            // Delete all existing tasks for this project
+            await deleteAllTasksForProject(projectId);
+
+            // Recreate all tasks from parsed Markdown
+            // Track new task IDs for parent-child relationships
+            const taskIdMap = new Map<string, string>(); // Maps old ID to new ID
+
+            async function createTasksRecursively(tasksToCreate: any[]): Promise<void> {
+                for (const task of tasksToCreate) {
+                    // Get parent ID if this is a subtask
+                    let newParentId: string | undefined;
+                    if (task.parentId) {
+                        newParentId = taskIdMap.get(task.parentId);
                     }
-                });
-            }
-            mapExistingTasks(project.tasks);
 
-            // Build map of new tasks from parsed content
-            const newTaskMap = new Map<string, any>();
-            function mapNewTasks(tasks: any[]): void {
-                tasks.forEach(task => {
-                    newTaskMap.set(task.id, task);
-                    if (task.subtasks && task.subtasks.length > 0) {
-                        mapNewTasks(task.subtasks);
-                    }
-                });
-            }
-            mapNewTasks(parsedProject.tasks);
-
-            // Update the project title if it changed
-            if (parsedProject.title !== project.title) {
-                // Note: Would need updateProject function in supabase-adapter
-                // For now, we'll skip title updates in Supabase mode
-            }
-
-            // Synchronize tasks: delete removed tasks, update/add others
-            for (const [taskId, existingTask] of existingTaskMap) {
-                if (!newTaskMap.has(taskId)) {
-                    // Task was deleted, remove it
-                    await deleteTask(taskId);
-                }
-            }
-
-            // Add or update remaining tasks
-            for (const [taskId, newTask] of newTaskMap) {
-                if (existingTaskMap.has(taskId)) {
-                    // Task exists, update it
-                    await updateTask(taskId, {
-                        content: newTask.content,
-                        status: newTask.status,
-                        dueDate: newTask.dueDate,
-                        repeatFrequency: newTask.repeatFrequency,
-                    });
-                } else {
-                    // New task, add it
-                    await addTask(
+                    // Create the task
+                    const createdTask = await addTask(
                         projectId,
-                        newTask.content,
-                        newTask.status,
-                        newTask.dueDate,
-                        newTask.parentId,
-                        newTask.repeatFrequency
+                        task.content,
+                        task.status,
+                        task.dueDate,
+                        newParentId,
+                        task.repeatFrequency
                     );
+
+                    // Store mapping of old ID to new ID
+                    taskIdMap.set(task.id, createdTask.id);
+
+                    // Recursively create subtasks
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        await createTasksRecursively(task.subtasks);
+                    }
                 }
             }
+
+            // Create all tasks
+            await createTasksRecursively(parsedProject.tasks);
 
             return NextResponse.json({ success: true });
         } else {
