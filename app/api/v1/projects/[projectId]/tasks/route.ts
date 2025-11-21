@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjectsFromDir, getAllProjects } from '@/lib/markdown';
 import { addTask } from '@/lib/markdown-updater';
-import { TaskStatus, RepeatFrequency } from '@/lib/types';
+import { TaskStatus, RepeatFrequency, Task } from '@/lib/types';
 import * as supabaseAdapter from '@/lib/supabase-adapter';
 import {
     validateProjectId,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             // Find parent task ID if parentLineNumber is provided
             let parentTaskId: string | undefined;
             if (parentLineNumber !== undefined) {
-                const findTaskByLineNumber = (tasks: any[]): any => {
+                const findTaskByLineNumber = (tasks: Task[]): Task | undefined => {
                     for (const task of tasks) {
                         if (task.lineNumber === parentLineNumber) return task;
                         if (task.subtasks) {

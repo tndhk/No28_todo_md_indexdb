@@ -6,8 +6,8 @@ import { auth, getUserDataDir } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 import { renderMarkdown } from '@/lib/markdown-renderer';
 import { parseMarkdown } from '@/lib/markdown';
-import { getProject, updateTask, deleteTask, addTask, deleteAllTasksForProject } from '@/lib/supabase-adapter';
-import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getProject, addTask, deleteAllTasksForProject } from '@/lib/supabase-adapter';
+import { Task } from '@/lib/types';
 
 interface RouteContext {
     params: Promise<{
@@ -171,7 +171,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             // Track new task IDs for parent-child relationships
             const taskIdMap = new Map<string, string>(); // Maps old ID to new ID
 
-            async function createTasksRecursively(tasksToCreate: any[]): Promise<void> {
+            async function createTasksRecursively(tasksToCreate: Task[]): Promise<void> {
                 for (const task of tasksToCreate) {
                     // Get parent ID if this is a subtask
                     let newParentId: string | undefined;
