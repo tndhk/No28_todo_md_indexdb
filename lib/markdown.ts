@@ -4,6 +4,7 @@ import { Project, Task, TaskStatus, RepeatFrequency } from './types';
 import { getConfig } from './config';
 import { getAllProjects as getAllProjectsFromDB } from './supabase-adapter';
 import { auth } from './auth';
+import { securityLogger } from './logger';
 
 /**
  * Get all projects - uses Supabase by default, falls back to files if not configured
@@ -15,14 +16,37 @@ export async function getAllProjects(): Promise<Project[]> {
                                process.env.SUPABASE_SERVICE_ROLE_KEY;
     const useSupabase = supabaseConfigured && process.env.USE_SUPABASE === 'true';
 
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+        securityLogger.info({
+            supabaseConfigured,
+            useSupabase,
+            env_USE_SUPABASE: process.env.USE_SUPABASE,
+        }, '[getAllProjects] Supabase check');
+    }
+
     if (useSupabase) {
         // Get user from NextAuth session
         const session = await auth();
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+            securityLogger.info({
+                hasSession: !!session,
+                hasUserId: !!session?.user?.id,
+                userId: session?.user?.id,
+            }, '[getAllProjects] Auth session check');
+        }
+
         if (!session?.user?.id) {
             throw new Error('Unauthorized: No user session found');
         }
 
-        return getAllProjectsFromDB(session.user.id);
+        const projects = await getAllProjectsFromDB(session.user.id);
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+            securityLogger.info({
+                projectCount: projects.length,
+                userId: session.user.id,
+            }, '[getAllProjects] Projects loaded from Supabase');
+        }
+        return projects;
     } else {
         // Fallback to file-based storage
         const config = getConfig();

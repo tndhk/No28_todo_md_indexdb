@@ -2,11 +2,19 @@ import { supabaseAdmin, DbTask } from './supabase-client';
 import { Project, Task, TaskStatus, RepeatFrequency } from './types';
 import { assignLineNumbers, assignRawLines } from './markdown-renderer';
 import { calculateNextDueDate } from './markdown-updater';
+import { securityLogger } from './logger';
 
 /**
  * Get all projects for a user
  */
 export async function getAllProjects(userId: string): Promise<Project[]> {
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+        securityLogger.info({
+            hasSupabaseAdmin: !!supabaseAdmin,
+            userId,
+        }, '[supabase-adapter.getAllProjects] Starting');
+    }
+
     if (!supabaseAdmin) {
         throw new Error('Supabase is not configured');
     }
@@ -17,6 +25,14 @@ export async function getAllProjects(userId: string): Promise<Project[]> {
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
+
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+        securityLogger.info({
+            projectCount: projects?.length || 0,
+            hasError: !!projectsError,
+            error: projectsError?.message,
+        }, '[supabase-adapter.getAllProjects] Projects fetched');
+    }
 
     if (projectsError) {
         throw new Error(`Failed to fetch projects: ${projectsError.message}`);
