@@ -36,6 +36,14 @@
     margin-bottom: 2rem;
 }
 
+.navSectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
 .navTitle {
     font-size: 0.75rem;
     font-weight: 600;
@@ -43,8 +51,28 @@
     letter-spacing: 0.05em;
     color: var(--foreground);
     opacity: 0.5;
-    padding: 0 1.5rem;
-    margin-bottom: 0.5rem;
+    padding: 0;
+    margin: 0;
+}
+
+.addButton {
+    background: transparent;
+    border: none;
+    color: var(--foreground);
+    opacity: 0.5;
+    padding: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: var(--radius-sm, 4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.addButton:hover {
+    opacity: 1;
+    background: var(--surface-hover);
+    color: var(--primary);
 }
 
 .navItem {

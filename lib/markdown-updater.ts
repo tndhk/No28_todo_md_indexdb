@@ -293,3 +293,17 @@ export function handleRecurringTask(
         task.repeatFrequency
     );
 }
+
+/**
+ * Creates a new project file with the given title
+ * @param filePath - Path to the new markdown file
+ * @param title - Project title
+ */
+export function createProjectFile(filePath: string, title: string): void {
+    const config = getConfig();
+
+    // Create initial markdown content with just the title
+    const content = `# ${title}\n`;
+
+    fs.writeFileSync(filePath, content, config.fileEncoding);
+}

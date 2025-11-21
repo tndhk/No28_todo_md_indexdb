@@ -1,7 +1,7 @@
 'use client';
 
 import { Project } from '@/lib/types';
-import { FileText, LayoutList, Calendar, Code } from 'lucide-react';
+import { FileText, LayoutList, Calendar, Code, Plus } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -10,6 +10,7 @@ interface SidebarProps {
     currentProjectId?: string;
     onViewChange: (view: 'tree' | 'weekly' | 'md') => void;
     onProjectSelect: (projectId: string) => void;
+    onCreateProject: () => void;
 }
 
 export default function Sidebar({
@@ -18,6 +19,7 @@ export default function Sidebar({
     currentProjectId,
     onViewChange,
     onProjectSelect,
+    onCreateProject,
 }: SidebarProps) {
     return (
         <aside className={styles.sidebar}>
@@ -52,7 +54,16 @@ export default function Sidebar({
                 </div>
 
                 <div className={styles.navSection}>
-                    <h2 className={styles.navTitle}>Projects</h2>
+                    <div className={styles.navSectionHeader}>
+                        <h2 className={styles.navTitle}>Projects</h2>
+                        <button
+                            className={styles.addButton}
+                            onClick={onCreateProject}
+                            title="Create new project"
+                        >
+                            <Plus size={18} />
+                        </button>
+                    </div>
                     {projects.map((project) => (
                         <button
                             key={project.id}
