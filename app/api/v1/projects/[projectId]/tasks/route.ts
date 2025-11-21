@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getAllProjectsFromDir, getAllProjects } from '@/lib/markdown';
 import { addTask } from '@/lib/markdown-updater';
 import { TaskStatus, RepeatFrequency } from '@/lib/types';
+import * as supabaseAdapter from '@/lib/supabase-adapter';
 import {
     validateProjectId,
     validateTaskContent,
@@ -42,18 +43,44 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const body = await request.json();
         const { content, status, dueDate, parentLineNumber, repeatFrequency } = body;
 
-        // Get session and user-specific data directory
+        // Get session
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = await getUserDataDir(userId);
 
-        apiLogger.debug({
-            requestId,
-            projectId,
-            userId,
-            status,
-            hasParent: !!parentLineNumber,
-        }, `Creating new task in project ${projectId}`);
+        // Validate inputs first
+        const contentValidation = validateTaskContent(content);
+        if (!contentValidation.valid) {
+            return NextResponse.json(
+                { error: contentValidation.error },
+                { status: 400 }
+            );
+        }
+
+        const statusValidation = validateTaskStatus(status);
+        if (!statusValidation.valid) {
+            return NextResponse.json(
+                { error: statusValidation.error },
+                { status: 400 }
+            );
+        }
+
+        const dueDateValidation = validateDueDate(dueDate);
+        if (!dueDateValidation.valid) {
+            return NextResponse.json(
+                { error: dueDateValidation.error },
+                { status: 400 }
+            );
+        }
+
+        if (parentLineNumber !== undefined) {
+            const lineValidation = validateLineNumber(parentLineNumber);
+            if (!lineValidation.valid) {
+                return NextResponse.json(
+                    { error: lineValidation.error },
+                    { status: 400 }
+                );
+            }
+        }
 
         // Validate project ID
         const projectIdValidation = validateProjectId(projectId);
@@ -64,73 +91,101 @@ export async function POST(request: NextRequest, context: RouteContext) {
             );
         }
 
-        // Find project
-        const projects = await getAllProjectsFromDir(dataDir);
-        const project = projects.find((p) => p.id === projectId);
+        const sanitizedContent = sanitizeContent(content);
 
-        if (!project) {
-            return NextResponse.json(
-                { error: 'Project not found' },
-                { status: 404 }
-            );
-        }
+        // Check if Supabase should be used
+        const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+                                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+                                   process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const useSupabase = supabaseConfigured && process.env.USE_SUPABASE === 'true';
 
-        // Validate file path
-        if (!validateFilePath(project.path)) {
-            return NextResponse.json(
-                { error: 'Invalid file path' },
-                { status: 400 }
-            );
-        }
-
-        // Use file locking
-        const result = await withFileLock(project.path, async () => {
-            // Validate content
-            const contentValidation = validateTaskContent(content);
-            if (!contentValidation.valid) {
-                return { error: contentValidation.error, status: 400 };
+        if (useSupabase) {
+            // Supabase mode
+            if (!userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            // Validate status
-            const statusValidation = validateTaskStatus(status);
-            if (!statusValidation.valid) {
-                return { error: statusValidation.error, status: 400 };
+            // Get current project to find parent task if needed
+            const currentProject = await supabaseAdapter.getProject(projectId, userId);
+            if (!currentProject) {
+                return NextResponse.json(
+                    { error: 'Project not found' },
+                    { status: 404 }
+                );
             }
 
-            // Validate due date
-            const dueDateValidation = validateDueDate(dueDate);
-            if (!dueDateValidation.valid) {
-                return { error: dueDateValidation.error, status: 400 };
-            }
-
-            // Validate parent line number if provided
+            // Find parent task ID if parentLineNumber is provided
+            let parentTaskId: string | undefined;
             if (parentLineNumber !== undefined) {
-                const lineValidation = validateLineNumber(parentLineNumber);
-                if (!lineValidation.valid) {
-                    return { error: lineValidation.error, status: 400 };
+                const findTaskByLineNumber = (tasks: any[]): any => {
+                    for (const task of tasks) {
+                        if (task.lineNumber === parentLineNumber) return task;
+                        if (task.subtasks) {
+                            const found = findTaskByLineNumber(task.subtasks);
+                            if (found) return found;
+                        }
+                    }
+                    return undefined;
+                };
+                const parentTask = findTaskByLineNumber(currentProject.tasks);
+                if (parentLineNumber !== undefined && !parentTask) {
+                    return NextResponse.json(
+                        { error: 'Parent task not found' },
+                        { status: 404 }
+                    );
                 }
+                parentTaskId = parentTask?.id;
             }
 
-            const sanitizedContent = sanitizeContent(content);
-            addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
-            return null;
-        });
-
-        // Check for validation errors
-        if (result && result.error) {
-            apiLogger.warn({ requestId, projectId, error: result.error }, 'Validation error creating task');
-            transaction.end(result.status, { error: result.error });
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
+            // Add task via Supabase
+            await supabaseAdapter.addTask(
+                projectId,
+                sanitizedContent,
+                status as TaskStatus,
+                dueDate,
+                parentTaskId,
+                repeatFrequency as RepeatFrequency
             );
-        }
 
-        // Return updated projects
-        const updatedProjects = await getAllProjectsFromDir(dataDir);
-        apiLogger.info({ requestId, projectId, userId }, `Successfully created task in project ${projectId}`);
-        transaction.end(201, { projectId, userId });
-        return NextResponse.json(updatedProjects, { status: 201 });
+            // Return updated projects
+            const updatedProjects = await getAllProjects();
+            apiLogger.info({ requestId, projectId, userId }, `Successfully created task in project ${projectId}`);
+            transaction.end(201, { projectId, userId });
+            return NextResponse.json(updatedProjects, { status: 201 });
+        } else {
+            // File-based mode
+            const dataDir = await getUserDataDir(userId);
+
+            // Find project
+            const projects = await getAllProjectsFromDir(dataDir);
+            const project = projects.find((p) => p.id === projectId);
+
+            if (!project) {
+                return NextResponse.json(
+                    { error: 'Project not found' },
+                    { status: 404 }
+                );
+            }
+
+            // Validate file path
+            if (!validateFilePath(project.path)) {
+                return NextResponse.json(
+                    { error: 'Invalid file path' },
+                    { status: 400 }
+                );
+            }
+
+            // Use file locking
+            await withFileLock(project.path, async () => {
+                addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
+            });
+
+            // Return updated projects
+            const updatedProjects = await getAllProjectsFromDir(dataDir);
+            apiLogger.info({ requestId, projectId, userId }, `Successfully created task in project ${projectId}`);
+            transaction.end(201, { projectId, userId });
+            return NextResponse.json(updatedProjects, { status: 201 });
+        }
     } catch (error) {
         logError(error, { operation: 'POST /api/v1/projects/tasks', requestId, projectId }, apiLogger);
         Sentry.captureException(error, { extra: { requestId, projectId } });

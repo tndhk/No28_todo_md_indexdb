@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getAllProjectsFromDir, getAllProjects } from '@/lib/markdown';
 import { rewriteMarkdown } from '@/lib/markdown-updater';
 import { Task } from '@/lib/types';
+import * as supabaseAdapter from '@/lib/supabase-adapter';
 import {
     validateProjectId,
     validateFilePath,
@@ -43,40 +44,70 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             );
         }
 
-        // Get session and user-specific data directory
+        // Get session
         const session = await auth();
         const userId = session?.user?.id;
-        const dataDir = await getUserDataDir(userId);
 
-        // Find project
-        const projects = await getAllProjectsFromDir(dataDir);
-        const project = projects.find((p) => p.id === projectId);
+        // Check if Supabase should be used
+        const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+                                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+                                   process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const useSupabase = supabaseConfigured && process.env.USE_SUPABASE === 'true';
 
-        if (!project) {
-            return NextResponse.json(
-                { error: 'Project not found' },
-                { status: 404 }
-            );
+        if (useSupabase) {
+            // Supabase mode
+            if (!userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            // Get current project to verify it exists
+            const currentProject = await supabaseAdapter.getProject(projectId, userId);
+            if (!currentProject) {
+                return NextResponse.json(
+                    { error: 'Project not found' },
+                    { status: 404 }
+                );
+            }
+
+            // Reorder tasks via Supabase
+            await supabaseAdapter.reorderTasks(projectId, tasks as Task[]);
+
+            // Return updated projects
+            const updatedProjects = await getAllProjects();
+            return NextResponse.json(updatedProjects);
+        } else {
+            // File-based mode
+            const dataDir = await getUserDataDir(userId);
+
+            // Find project
+            const projects = await getAllProjectsFromDir(dataDir);
+            const project = projects.find((p) => p.id === projectId);
+
+            if (!project) {
+                return NextResponse.json(
+                    { error: 'Project not found' },
+                    { status: 404 }
+                );
+            }
+
+            // Validate file path
+            if (!validateFilePath(project.path)) {
+                return NextResponse.json(
+                    { error: 'Invalid file path' },
+                    { status: 400 }
+                );
+            }
+
+            // Use file locking
+            await withFileLock(project.path, async () => {
+                const updatedProject = { ...project, tasks: tasks as Task[] };
+                rewriteMarkdown(project.path, updatedProject);
+            });
+
+            // Return updated projects
+            const updatedProjects = await getAllProjectsFromDir(dataDir);
+            return NextResponse.json(updatedProjects);
         }
-
-        // Validate file path
-        if (!validateFilePath(project.path)) {
-            return NextResponse.json(
-                { error: 'Invalid file path' },
-                { status: 400 }
-            );
-        }
-
-        // Use file locking
-        await withFileLock(project.path, async () => {
-            const updatedProject = { ...project, tasks: tasks as Task[] };
-            rewriteMarkdown(project.path, updatedProject);
-            return null;
-        });
-
-        // Return updated projects
-        const updatedProjects = await getAllProjectsFromDir(dataDir);
-        return NextResponse.json(updatedProjects);
     } catch (error) {
         console.error('Error reordering tasks:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to reorder tasks';
