@@ -181,10 +181,29 @@ export async function POST(request: NextRequest) {
 
                     // Check if this is a recurring task being marked as done
                     if (updates?.status === 'done' && task.repeatFrequency) {
-                        if (useSupabase) {
-                            await handleRecurringTaskDB(task);
-                        } else {
-                            handleRecurringTaskFile(project.path, task);
+                        // For recurring tasks, we need the full task object with content
+                        // Find the full task from the project
+                        const findFullTask = (tasks: any[]): any => {
+                            for (const t of tasks) {
+                                if (t.id === task.id) {
+                                    return t;
+                                }
+                                if (t.subtasks?.length > 0) {
+                                    const found = findFullTask(t.subtasks);
+                                    if (found) return found;
+                                }
+                            }
+                            return null;
+                        };
+
+                        const fullTask = findFullTask(project.tasks);
+                        if (fullTask) {
+                            // handleRecurringTask handles marking as done and creating next occurrence
+                            if (useSupabase) {
+                                await handleRecurringTaskDB(fullTask);
+                            } else {
+                                handleRecurringTaskFile(project.path, fullTask);
+                            }
                         }
                     } else {
                         if (useSupabase) {
