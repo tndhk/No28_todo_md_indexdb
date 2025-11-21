@@ -133,9 +133,12 @@ function loadConfig(): AppConfig {
     const maxContentLength = getNumericEnvVar('MAX_CONTENT_LENGTH', 500, 10, 10000);
     const maxProjectIdLength = getNumericEnvVar('MAX_PROJECT_ID_LENGTH', 100, 1, 500);
 
-    // Resolve and validate data directory
+    // Resolve and validate data directory (skip validation in Supabase-only mode)
     const dataDir = path.resolve(dataDirRaw);
-    validateDataDir(dataDir);
+    const useSupabase = process.env.USE_SUPABASE === 'true';
+    if (!useSupabase) {
+        validateDataDir(dataDir);
+    }
 
     // Validate file encoding
     const fileEncoding = validateFileEncoding(fileEncodingRaw);
