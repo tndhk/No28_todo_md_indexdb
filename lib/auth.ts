@@ -324,6 +324,14 @@ export async function getUserDataDir(userId: string | undefined | null): Promise
         if (!shouldUseSupabase() && !fs.existsSync(user.dataDir)) {
             fs.mkdirSync(user.dataDir, { recursive: true });
         }
+
+        // In Supabase mode, if the dataDir doesn't exist in the file system,
+        // fall back to the default data directory (which contains shared projects)
+        if (shouldUseSupabase() && !fs.existsSync(user.dataDir)) {
+            console.log('[getUserDataDir] User dataDir not found in file system, falling back to default:', path.join(process.cwd(), 'data'));
+            return path.join(process.cwd(), 'data');
+        }
+
         return user.dataDir;
     }
 
