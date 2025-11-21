@@ -7,6 +7,10 @@ import { calculateNextDueDate } from './markdown-updater';
  * Get all projects for a user
  */
 export async function getAllProjects(userId: string): Promise<Project[]> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     // Fetch projects
     const { data: projects, error: projectsError } = await supabaseAdmin
         .from('projects')
@@ -68,6 +72,10 @@ export async function getAllProjects(userId: string): Promise<Project[]> {
  * Get a single project by ID
  */
 export async function getProject(projectId: string, userId: string): Promise<Project | null> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     const { data: project, error: projectError } = await supabaseAdmin
         .from('projects')
         .select('*')
@@ -106,6 +114,10 @@ export async function getProject(projectId: string, userId: string): Promise<Pro
  * Create a new project
  */
 export async function createProject(userId: string, projectId: string, title: string): Promise<Project> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     const { data, error } = await supabaseAdmin
         .from('projects')
         .insert({
@@ -140,6 +152,10 @@ export async function updateTask(
         repeatFrequency: RepeatFrequency | undefined;
     }>
 ): Promise<void> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     const dbUpdates: Partial<DbTask> = {};
 
     if (updates.content !== undefined) {
@@ -180,6 +196,10 @@ export async function addTask(
     parentId?: string,
     repeatFrequency?: RepeatFrequency
 ): Promise<Task> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     // Calculate display_order and indent_level
     let displayOrder = 0;
     let indentLevel = 0;
@@ -278,6 +298,10 @@ export async function addTask(
  * Delete a task and all its subtasks
  */
 export async function deleteTask(taskId: string): Promise<void> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
     // Get all subtasks recursively
     const subtaskIds = await getSubtaskIds(taskId);
 
@@ -296,6 +320,10 @@ export async function deleteTask(taskId: string): Promise<void> {
  * Recursively get all subtask IDs
  */
 async function getSubtaskIds(parentId: string): Promise<string[]> {
+    if (!supabaseAdmin) {
+        return [];
+    }
+
     const { data: children } = await supabaseAdmin
         .from('tasks')
         .select('id')
@@ -317,6 +345,13 @@ async function getSubtaskIds(parentId: string): Promise<string[]> {
  * Reorder tasks (used for drag-and-drop)
  */
 export async function reorderTasks(projectId: string, tasks: Task[]): Promise<void> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
+    // Store in local variable for TypeScript null check
+    const client = supabaseAdmin;
+
     // Flatten task tree and assign new display_order
     const flatTasks: { id: string; display_order: number; line_number: number }[] = [];
     let order = 0;
@@ -339,7 +374,7 @@ export async function reorderTasks(projectId: string, tasks: Task[]): Promise<vo
 
     // Batch update
     const updates = flatTasks.map(({ id, display_order, line_number }) =>
-        supabaseAdmin
+        client
             .from('tasks')
             .update({ display_order, line_number })
             .eq('id', id)
