@@ -4,6 +4,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Debug logging for Supabase initialization
+if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+    console.log('[Supabase Init] NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✓ set' : '✗ NOT SET');
+    console.log('[Supabase Init] SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✓ set' : '✗ NOT SET');
+    console.log('[Supabase Init] USE_SUPABASE:', process.env.USE_SUPABASE);
+}
+
 /**
  * Supabase client for server-side operations with service role key
  * This bypasses Row Level Security and should only be used in API routes
@@ -16,6 +23,10 @@ export const supabaseAdmin = (supabaseUrl && supabaseServiceKey) ? createClient(
         persistSession: false,
     },
 }) : null;
+
+if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+    console.log('[Supabase Init] supabaseAdmin initialized:', supabaseAdmin ? '✓ success' : '✗ FAILED');
+}
 
 /**
  * Supabase client for client-side operations with anonymous key

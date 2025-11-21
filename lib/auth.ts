@@ -29,7 +29,20 @@ const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
  * Returns true if Supabase is configured and enabled
  */
 function shouldUseSupabase(): boolean {
-    return !!supabaseAdmin && process.env.USE_SUPABASE === 'true';
+    const hasSupabaseAdmin = !!supabaseAdmin;
+    const isSupabaseEnabled = process.env.USE_SUPABASE === 'true';
+    const result = hasSupabaseAdmin && isSupabaseEnabled;
+
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+        securityLogger.info({
+            hasSupabaseAdmin,
+            isSupabaseEnabled,
+            result,
+            useSupabaseEnv: process.env.USE_SUPABASE,
+        }, '[Auth] shouldUseSupabase check');
+    }
+
+    return result;
 }
 
 /**
@@ -139,7 +152,8 @@ export async function findUserByUsername(username: string): Promise<AppUser | un
         }
     } else {
         const users = await loadUsers();
-        return users.find(u => u.username.toLowerCase() === username.toLowerCase());
+        const found = users.find(u => u && u.username && u.username.toLowerCase() === username.toLowerCase());
+        return found || undefined;
     }
 }
 
