@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
@@ -35,6 +36,20 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalParentTask, setModalParentTask] = useState<Task | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [hideDoneTasks, setHideDoneTasks] = useState(false);
+
+  // Load hideDoneTasks from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('hideDoneTasks');
+    if (saved !== null) {
+      setHideDoneTasks(saved === 'true');
+    }
+  }, []);
+
+  // Save hideDoneTasks to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('hideDoneTasks', hideDoneTasks.toString());
+  }, [hideDoneTasks]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -77,6 +92,26 @@ export default function Home() {
       });
   }, []);
 
+  // Helper function to filter out done tasks recursively
+  const filterDoneTasks = useCallback((tasks: Task[]): Task[] => {
+    return tasks
+      .map(task => {
+        // First, recursively filter subtasks
+        if (task.subtasks.length > 0) {
+          const filteredSubtasks = filterDoneTasks(task.subtasks);
+          return { ...task, subtasks: filteredSubtasks };
+        }
+        return task;
+      })
+      .filter(task => {
+        // Filter out done tasks that have no remaining subtasks
+        if (task.status === 'done' && task.subtasks.length === 0) {
+          return false;
+        }
+        return true;
+      });
+  }, []);
+
   // Helper function to update current project's tasks
   const updateCurrentProjectTasks = useCallback((updater: (tasks: Task[]) => Task[]) => {
     setProjects(prev => prev.map(project => {
@@ -107,6 +142,11 @@ export default function Home() {
   }, [loadProjects]);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
+
+  // Filter tasks based on hideDoneTasks state
+  const displayTasks = currentProject?.tasks
+    ? (hideDoneTasks ? filterDoneTasks(currentProject.tasks) : currentProject.tasks)
+    : [];
 
   const handleTaskToggle = async (task: Task) => {
     if (!currentProjectId) return;
@@ -247,14 +287,24 @@ export default function Home() {
             <h1 className={styles.projectTitle}>
               {currentProject?.title || 'Select a project'}
             </h1>
-            <UserMenu />
+            <div className={styles.headerActions}>
+              <button
+                className={styles.toggleButton}
+                onClick={() => setHideDoneTasks(!hideDoneTasks)}
+                title={hideDoneTasks ? 'Show completed tasks' : 'Hide completed tasks'}
+              >
+                {hideDoneTasks ? <EyeOff size={18} /> : <Eye size={18} />}
+                <span>{hideDoneTasks ? 'Show Done' : 'Hide Done'}</span>
+              </button>
+              <UserMenu />
+            </div>
           </header>
 
           <div className={styles.content}>
             <ErrorBoundary>
               {currentView === 'tree' && currentProject && (
                 <TreeView
-                  tasks={currentProject.tasks}
+                  tasks={displayTasks}
                   onTaskToggle={handleTaskToggle}
                   onTaskDelete={handleTaskDelete}
                   onTaskAdd={handleTaskAdd}
@@ -264,7 +314,7 @@ export default function Home() {
               )}
               {currentView === 'weekly' && currentProject && (
                 <WeeklyView
-                  tasks={currentProject.tasks}
+                  tasks={displayTasks}
                   onTaskUpdate={handleTaskUpdate}
                 />
               )}
