@@ -10,12 +10,14 @@ import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
 import MDView from '@/components/MDView';
 import AddTaskModal from '@/components/AddTaskModal';
+import CreateProjectModal from '@/components/CreateProjectModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import UserMenu from '@/components/UserMenu';
 import { triggerConfetti } from '@/lib/confetti';
 import {
   fetchProjects,
+  createProject,
   addTask as apiAddTask,
   updateTask as apiUpdateTask,
   deleteTask as apiDeleteTask,
@@ -34,6 +36,7 @@ export default function Home() {
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [modalParentTask, setModalParentTask] = useState<Task | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [hideDoneTasks, setHideDoneTasks] = useState(false);
@@ -255,6 +258,18 @@ export default function Home() {
     }
   };
 
+  const handleCreateProject = async (title: string) => {
+    try {
+      const newProject = await createProject(title);
+      setProjects(prev => [...prev, newProject]);
+      setCurrentProjectId(newProject.id);
+      showToast('success', `Project "${title}" created successfully`);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw error; // Re-throw to let the modal handle the error
+    }
+  };
+
   // Show loading state while checking authentication
   if (status === 'loading' || loading) {
     return (
@@ -279,6 +294,7 @@ export default function Home() {
             currentProjectId={currentProjectId}
             onViewChange={setCurrentView}
             onProjectSelect={setCurrentProjectId}
+            onCreateProject={() => setIsCreateProjectModalOpen(true)}
           />
         </ErrorBoundary>
 
@@ -337,6 +353,12 @@ export default function Home() {
           }}
           onAdd={handleModalAdd}
           isSubtask={!!modalParentTask}
+        />
+
+        <CreateProjectModal
+          isOpen={isCreateProjectModalOpen}
+          onClose={() => setIsCreateProjectModalOpen(false)}
+          onSubmit={handleCreateProject}
         />
 
         <Toast toasts={toasts} onDismiss={dismissToast} />

@@ -37,6 +37,26 @@ export async function fetchProjects(): Promise<Project[]> {
 }
 
 /**
+ * Create a new project
+ * @throws {ApiError} if the API request fails
+ */
+export async function createProject(title: string): Promise<Project> {
+    const res = await fetch('/api/v1/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new ApiError(errorData.error || 'Failed to create project', res.status);
+    }
+
+    const data = await res.json();
+    return data;
+}
+
+/**
  * Add a new task
  * @throws {ApiError} if the API request fails
  * @throws {ApiValidationError} if response validation fails

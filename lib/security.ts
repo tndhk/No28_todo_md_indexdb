@@ -53,6 +53,27 @@ export function validateProjectId(projectId: string): { valid: boolean; error?: 
 }
 
 /**
+ * Validates project title
+ */
+export function validateProjectTitle(title: string): { valid: boolean; error?: string } {
+    if (!title || typeof title !== 'string') {
+        return { valid: false, error: 'Project title is required' };
+    }
+
+    // Trim and check length
+    const trimmed = title.trim();
+    if (trimmed.length === 0) {
+        return { valid: false, error: 'Project title cannot be empty' };
+    }
+
+    if (trimmed.length > 100) {
+        return { valid: false, error: 'Project title is too long (max 100 characters)' };
+    }
+
+    return { valid: true };
+}
+
+/**
  * Validates task content to prevent XSS and injection
  */
 export function validateTaskContent(content: string): { valid: boolean; error?: string } {
