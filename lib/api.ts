@@ -86,7 +86,8 @@ export async function updateTask(
         status?: TaskStatus;
         dueDate?: string;
         repeatFrequency?: RepeatFrequency;
-    }
+    },
+    currentRepeatFrequency?: RepeatFrequency
 ): Promise<Project[]> {
     const res = await fetch(`/api/projects`, {
         method: 'POST',
@@ -94,7 +95,7 @@ export async function updateTask(
         body: JSON.stringify({
             action: 'updateTask',
             projectId,
-            task: { id: taskId, lineNumber },
+            task: { id: taskId, lineNumber, repeatFrequency: currentRepeatFrequency },
             updates,
         }),
     });

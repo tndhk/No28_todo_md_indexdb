@@ -124,7 +124,7 @@ export default function Home() {
     try {
       const updatedProjects = await apiUpdateTask(currentProjectId, task.id, task.lineNumber, {
         status: newStatus,
-      });
+      }, task.repeatFrequency);
       setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
@@ -168,7 +168,7 @@ export default function Home() {
         dueDate: updates.dueDate,
         status: updates.status,
         repeatFrequency: updates.repeatFrequency,
-      });
+      }, task.repeatFrequency);
       setProjects(updatedProjects);
     } catch (error) {
       console.error('Failed to update task:', error);

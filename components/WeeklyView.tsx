@@ -51,7 +51,7 @@ function DraggableTask({ task }: { task: Task }) {
             {task.parentContent && (
                 <div className={styles.parentContent}>{task.parentContent}</div>
             )}
-            <div className={styles.taskContent}>
+            <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
                 {task.content}
                 {task.repeatFrequency && (
                     <span className={styles.repeatBadge}>
@@ -223,7 +223,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                         {draggedTask.parentContent && (
                             <div className={styles.parentContent}>{draggedTask.parentContent}</div>
                         )}
-                        <div className={styles.taskContent}>
+                        <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
                             {draggedTask.content}
                             {draggedTask.repeatFrequency && (
                                 <span className={styles.repeatBadge}>
