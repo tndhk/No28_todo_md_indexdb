@@ -122,9 +122,9 @@ export default function Home() {
     }
 
     try {
-      const updatedProjects = await apiUpdateTask(currentProjectId, task.id, task.lineNumber, {
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
         status: newStatus,
-      }, task.repeatFrequency);
+      });
       setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
@@ -143,7 +143,7 @@ export default function Home() {
     updateCurrentProjectTasks(tasks => deleteTaskFromTree(tasks, task.id));
 
     try {
-      const updatedProjects = await apiDeleteTask(currentProjectId, task.id, task.lineNumber);
+      const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber);
       setProjects(updatedProjects);
       showToast('success', 'Task deleted successfully');
     } catch (error) {
@@ -163,12 +163,12 @@ export default function Home() {
     if (!currentProjectId) return;
 
     try {
-      const updatedProjects = await apiUpdateTask(currentProjectId, task.id, task.lineNumber, {
+      const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
         content: updates.content,
         dueDate: updates.dueDate,
         status: updates.status,
         repeatFrequency: updates.repeatFrequency,
-      }, task.repeatFrequency);
+      });
       setProjects(updatedProjects);
     } catch (error) {
       console.error('Failed to update task:', error);

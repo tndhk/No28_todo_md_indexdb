@@ -25,7 +25,7 @@ export class ApiError extends Error {
  * @throws {ApiValidationError} if response validation fails
  */
 export async function fetchProjects(): Promise<Project[]> {
-    const res = await fetch('/api/projects');
+    const res = await fetch('/api/v1/projects');
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -49,12 +49,10 @@ export async function addTask(
     parentLineNumber?: number,
     repeatFrequency?: RepeatFrequency
 ): Promise<Project[]> {
-    const res = await fetch(`/api/projects`, {
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            action: 'add',
-            projectId,
             content,
             status,
             dueDate,
@@ -79,25 +77,18 @@ export async function addTask(
  */
 export async function updateTask(
     projectId: string,
-    taskId: string,
     lineNumber: number,
     updates: {
         content?: string;
         status?: TaskStatus;
         dueDate?: string;
         repeatFrequency?: RepeatFrequency;
-    },
-    currentRepeatFrequency?: RepeatFrequency
+    }
 ): Promise<Project[]> {
-    const res = await fetch(`/api/projects`, {
-        method: 'POST',
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'updateTask',
-            projectId,
-            task: { id: taskId, lineNumber, repeatFrequency: currentRepeatFrequency },
-            updates,
-        }),
+        body: JSON.stringify(updates),
     });
 
     if (!res.ok) {
@@ -116,17 +107,10 @@ export async function updateTask(
  */
 export async function deleteTask(
     projectId: string,
-    taskId: string,
     lineNumber: number
 ): Promise<Project[]> {
-    const res = await fetch(`/api/projects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'delete',
-            projectId,
-            task: { id: taskId, lineNumber },
-        }),
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
+        method: 'DELETE',
     });
 
     if (!res.ok) {
@@ -147,14 +131,10 @@ export async function reorderTasks(
     projectId: string,
     tasks: Task[]
 ): Promise<Project[]> {
-    const res = await fetch(`/api/projects`, {
-        method: 'POST',
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/reorder`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'reorder',
-            projectId,
-            tasks,
-        }),
+        body: JSON.stringify({ tasks }),
     });
 
     if (!res.ok) {
@@ -171,7 +151,7 @@ export async function reorderTasks(
  * @throws {ApiError} if the API request fails
  */
 export async function fetchRawMarkdown(projectId: string): Promise<string> {
-    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`);
 
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -179,7 +159,7 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
     }
 
     const data = await res.json();
-    return data.raw || '';
+    return data.content || '';
 }
 
 /**
@@ -187,14 +167,10 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
  * @throws {ApiError} if the API request fails
  */
 export async function saveRawMarkdown(projectId: string, content: string): Promise<void> {
-    const res = await fetch(`/api/projects`, {
-        method: 'POST',
+    const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'update',
-            projectId,
-            content,
-        }),
+        body: JSON.stringify({ content }),
     });
 
     if (!res.ok) {
