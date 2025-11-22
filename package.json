@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:audit:prod": "npm audit --production --audit-level=high",
+    "security:fix": "npm audit fix"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -40,6 +40,7 @@ export const authConfig: NextAuthConfig = {
     session: {
         strategy: 'jwt',
         maxAge: 30 * 24 * 60 * 60, // 30 days
+        updateAge: 24 * 60 * 60, // 24 hours - refresh token daily for security
     },
     trustHost: true,
 };
