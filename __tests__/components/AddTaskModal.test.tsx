@@ -335,7 +335,9 @@ describe('AddTaskModal', () => {
       await userEvent.type(contentInput, longContent);
       await userEvent.click(submitButton);
 
-      expect(defaultProps.onAdd).toHaveBeenCalledWith(longContent, 'todo', undefined, undefined);
+      // Content should be truncated to maxLength (500 characters)
+      const expectedContent = 'a'.repeat(500);
+      expect(defaultProps.onAdd).toHaveBeenCalledWith(expectedContent, 'todo', undefined, undefined);
     });
 
     it('should handle special characters in content', async () => {
