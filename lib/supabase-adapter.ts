@@ -330,6 +330,81 @@ export async function addTask(
 }
 
 /**
+ * Batch insert tasks - optimized for bulk imports
+ * @optimization Eliminates N+1 queries by using a single batch insert
+ */
+export async function batchAddTasks(
+    projectId: string,
+    tasks: Task[],
+    parentIdMap: Map<string, string> = new Map()
+): Promise<Map<string, string>> {
+    if (!supabaseAdmin) {
+        throw new Error('Supabase is not configured');
+    }
+
+    const newIdMap = new Map<string, string>();
+    const tasksToInsert: {
+        id: string;
+        project_id: string;
+        parent_id: string | null;
+        content: string;
+        status: string;
+        completed: boolean;
+        due_date: string | null;
+        repeat_frequency: string | null;
+        indent_level: number;
+        display_order: number;
+        line_number: number;
+    }[] = [];
+    let displayOrder = 0;
+
+    // Flatten tasks recursively into insertion array
+    function flattenTasks(taskList: Task[], indentLevel = 0) {
+        for (const task of taskList) {
+            const taskId = `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const parentId = task.parentId ? parentIdMap.get(task.parentId) : null;
+
+            tasksToInsert.push({
+                id: taskId,
+                project_id: projectId,
+                parent_id: parentId,
+                content: task.content,
+                status: task.status,
+                completed: task.status === 'done',
+                due_date: task.dueDate || null,
+                repeat_frequency: task.repeatFrequency || null,
+                indent_level: indentLevel,
+                display_order: displayOrder++,
+                line_number: task.lineNumber || displayOrder,
+            });
+
+            // Map old ID to new ID
+            newIdMap.set(task.id, taskId);
+
+            // Recursively flatten subtasks
+            if (task.subtasks && task.subtasks.length > 0) {
+                flattenTasks(task.subtasks, indentLevel + 1);
+            }
+        }
+    }
+
+    flattenTasks(tasks);
+
+    // Single batch insert
+    if (tasksToInsert.length > 0) {
+        const { error } = await supabaseAdmin
+            .from('tasks')
+            .insert(tasksToInsert);
+
+        if (error) {
+            throw new Error(`Failed to batch insert tasks: ${error.message}`);
+        }
+    }
+
+    return newIdMap;
+}
+
+/**
  * Delete all tasks for a project
  */
 export async function deleteAllTasksForProject(projectId: string): Promise<void> {

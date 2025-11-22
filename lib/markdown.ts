@@ -1,10 +1,11 @@
-import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { Project, Task, TaskStatus, RepeatFrequency } from './types';
 import { getConfig, shouldUseSupabase, getSupabaseStatus } from './config';
 import { getAllProjects as getAllProjectsFromDB } from './supabase-adapter';
 import { auth } from './auth';
 import { securityLogger } from './logger';
+import { getCachedProject } from './project-cache';
 import {
     TASK_LINE_PATTERN,
     DUE_DATE_PATTERN,
@@ -58,19 +59,102 @@ export async function getAllProjects(): Promise<Project[]> {
 /**
  * Get all projects from a specific data directory
  * @param dataDir - The directory to read projects from
+ * @optimization Replaced synchronous file operations with async parallelized versions
  */
 export async function getAllProjectsFromDir(dataDir: string): Promise<Project[]> {
     const config = getConfig();
 
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+    // Use async directory check and creation
+    try {
+        await fsPromises.access(dataDir);
+    } catch {
+        await fsPromises.mkdir(dataDir, { recursive: true });
         return [];
     }
-    const files = fs.readdirSync(dataDir).filter((file) => file.endsWith('.md'));
-    return files.map((file) => {
-        const content = fs.readFileSync(path.join(dataDir, file), config.fileEncoding);
-        return parseMarkdown(file.replace('.md', ''), content, path.join(dataDir, file));
-    });
+
+    // Read directory asynchronously
+    const allFiles = await fsPromises.readdir(dataDir);
+    const mdFiles = allFiles.filter((file) => file.endsWith('.md'));
+
+    // Parallelize file reads using Promise.all instead of sequential reads
+    const projects = await Promise.all(
+        mdFiles.map(async (file) => {
+            const filePath = path.join(dataDir, file);
+            const content = await fsPromises.readFile(filePath, config.fileEncoding);
+            return parseMarkdown(file.replace('.md', ''), content, filePath);
+        })
+    );
+
+    return projects;
+}
+
+/**
+ * Get a single project by ID from a specific data directory
+ * @param dataDir - The directory to read project from
+ * @param projectId - The project ID to retrieve
+ * @param useCache - Whether to use cache (default: true)
+ * @optimization Added to avoid reading all projects when only one is needed
+ * @optimization Uses in-memory cache to reduce file I/O
+ */
+export async function getProjectByIdFromDir(
+    dataDir: string,
+    projectId: string,
+    useCache = true
+): Promise<Project | null> {
+    const config = getConfig();
+    const filePath = path.join(dataDir, `${projectId}.md`);
+
+    // Use cache if enabled
+    if (useCache) {
+        return getCachedProject(dataDir, projectId, async () => {
+            try {
+                const content = await fsPromises.readFile(filePath, config.fileEncoding);
+                return parseMarkdown(projectId, content, filePath);
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                    return null;
+                }
+                throw error;
+            }
+        });
+    }
+
+    // Without cache
+    try {
+        const content = await fsPromises.readFile(filePath, config.fileEncoding);
+        return parseMarkdown(projectId, content, filePath);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return null;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Get a single project by ID - uses Supabase by default, falls back to files if not configured
+ * @param projectId - The project ID to retrieve
+ * @optimization Added to avoid reading all projects when only one is needed
+ */
+export async function getProjectById(projectId: string): Promise<Project | null> {
+    const useSupabase = shouldUseSupabase();
+
+    if (useSupabase) {
+        // Get user from NextAuth session
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new Error('Unauthorized: No user session found');
+        }
+
+        // For Supabase mode, we still need to get all projects
+        // But this is a DB query which is typically optimized with indexes
+        const projects = await getAllProjectsFromDB(session.user.id);
+        return projects.find((p) => p.id === projectId) || null;
+    } else {
+        // File-based storage: read only the specific file
+        const config = getConfig();
+        return getProjectByIdFromDir(config.dataDir, projectId);
+    }
 }
 
 export function parseMarkdown(id: string, content: string, filePath: string): Project {
@@ -105,18 +189,17 @@ export function parseMarkdown(id: string, content: string, filePath: string): Pr
             const isChecked = taskMatch[2] === 'x';
             const textContent = taskMatch[3];
 
-            // Extract Due Date
+            // OPTIMIZATION: Extract metadata and clean content in a more efficient way
             const dueMatch = textContent.match(DUE_DATE_PATTERN);
             const dueDate = dueMatch ? dueMatch[1] : undefined;
 
-            // Extract Repeat Frequency
             const repeatMatch = textContent.match(REPEAT_FREQUENCY_PATTERN);
             const repeatFrequency = repeatMatch ? (repeatMatch[1] as RepeatFrequency) : undefined;
 
-            // Remove tags from content
+            // Remove all tags in a single replace using combined pattern for efficiency
+            // This reduces multiple string operations to one
             const content = textContent
-                .replace(DUE_DATE_PATTERN, '')
-                .replace(REPEAT_FREQUENCY_PATTERN, '')
+                .replace(/#(?:due:\d{4}-\d{2}-\d{2}|repeat:(?:daily|weekly|monthly))/g, '')
                 .trim();
 
             // Handle Nesting

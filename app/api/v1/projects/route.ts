@@ -9,6 +9,7 @@ import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
 import { auth, getUserDataDir } from '@/lib/auth';
 import * as Sentry from '@sentry/nextjs';
 import path from 'path';
+import crypto from 'crypto';
 
 // Check if Supabase is configured
 const useSupabase = !!(
@@ -21,8 +22,9 @@ const useSupabase = !!(
 /**
  * GET /api/v1/projects
  * Returns all projects with their tasks
+ * @optimization Added ETag and Cache-Control headers for better caching
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
     const requestId = generateRequestId();
     const transaction = startApiTransaction({
         method: 'GET',
@@ -55,8 +57,27 @@ export async function GET() {
             projects = await getAllProjectsFromDir(dataDir);
         }
 
+        // OPTIMIZATION: Generate ETag for cache validation
+        const responseData = JSON.stringify(projects);
+        const etag = `"${crypto.createHash('md5').update(responseData).digest('hex')}"`;
+
+        // Check If-None-Match header
+        const ifNoneMatch = request.headers.get('if-none-match');
+        if (ifNoneMatch === etag) {
+            transaction.end(304, { cached: true, userId });
+            return new NextResponse(null, { status: 304 });
+        }
+
+        // Set cache headers
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'ETag': etag,
+            // Cache for 60 seconds, revalidate with server
+            'Cache-Control': 'private, max-age=60, must-revalidate',
+        });
+
         transaction.end(200, { projectCount: projects.length, userId });
-        return NextResponse.json(projects);
+        return new NextResponse(responseData, { status: 200, headers });
     } catch (error) {
         logError(error, { operation: 'GET /api/v1/projects', requestId }, apiLogger);
         Sentry.captureException(error, { extra: { requestId } });

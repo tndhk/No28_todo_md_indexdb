@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjectsFromDir, getAllProjects } from '@/lib/markdown';
+import { getProjectByIdFromDir, getAllProjects } from '@/lib/markdown';
 import { rewriteMarkdown } from '@/lib/markdown-updater';
 import { Task } from '@/lib/types';
+import { projectCache } from '@/lib/project-cache';
 import * as supabaseAdapter from '@/lib/supabase-adapter';
 import {
     validateProjectId,
@@ -76,12 +77,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             const updatedProjects = await getAllProjects();
             return NextResponse.json(updatedProjects);
         } else {
-            // File-based mode
+            // File-based mode - OPTIMIZED: Read only the specific project
             const dataDir = await getUserDataDir(userId);
-
-            // Find project
-            const projects = await getAllProjectsFromDir(dataDir);
-            const project = projects.find((p) => p.id === projectId);
+            const project = await getProjectByIdFromDir(dataDir, projectId);
 
             if (!project) {
                 return NextResponse.json(
@@ -104,9 +102,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
                 rewriteMarkdown(project.path, updatedProject);
             });
 
-            // Return updated projects
-            const updatedProjects = await getAllProjectsFromDir(dataDir);
-            return NextResponse.json(updatedProjects);
+            // OPTIMIZATION: Invalidate cache after mutation
+            projectCache.invalidate(dataDir, projectId);
+
+            // OPTIMIZED: Return only the updated project instead of all projects
+            const updatedProject = await getProjectByIdFromDir(dataDir, projectId);
+            return NextResponse.json([updatedProject]);
         }
     } catch (error) {
         console.error('Error reordering tasks:', error);

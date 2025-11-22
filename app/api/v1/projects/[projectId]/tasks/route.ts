@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjectsFromDir, getAllProjects } from '@/lib/markdown';
+import { getProjectByIdFromDir, getAllProjects } from '@/lib/markdown';
 import { addTask } from '@/lib/markdown-updater';
 import { TaskStatus, RepeatFrequency, Task } from '@/lib/types';
+import { projectCache } from '@/lib/project-cache';
 import * as supabaseAdapter from '@/lib/supabase-adapter';
 import {
     validateProjectId,
@@ -153,12 +154,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
             transaction.end(201, { projectId, userId });
             return NextResponse.json(updatedProjects, { status: 201 });
         } else {
-            // File-based mode
+            // File-based mode - OPTIMIZED: Read only the specific project
             const dataDir = await getUserDataDir(userId);
-
-            // Find project
-            const projects = await getAllProjectsFromDir(dataDir);
-            const project = projects.find((p) => p.id === projectId);
+            const project = await getProjectByIdFromDir(dataDir, projectId);
 
             if (!project) {
                 return NextResponse.json(
@@ -180,11 +178,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 addTask(project.path, sanitizedContent, status as TaskStatus, dueDate, parentLineNumber, repeatFrequency as RepeatFrequency);
             });
 
-            // Return updated projects
-            const updatedProjects = await getAllProjectsFromDir(dataDir);
+            // OPTIMIZATION: Invalidate cache after mutation
+            projectCache.invalidate(dataDir, projectId);
+
+            // OPTIMIZED: Return only the updated project instead of all projects
+            const updatedProject = await getProjectByIdFromDir(dataDir, projectId);
             apiLogger.info({ requestId, projectId, userId }, `Successfully created task in project ${projectId}`);
             transaction.end(201, { projectId, userId });
-            return NextResponse.json(updatedProjects, { status: 201 });
+            return NextResponse.json([updatedProject], { status: 201 });
         }
     } catch (error) {
         logError(error, { operation: 'POST /api/v1/projects/tasks', requestId, projectId }, apiLogger);

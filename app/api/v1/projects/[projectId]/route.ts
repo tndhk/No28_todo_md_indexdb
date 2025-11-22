@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProjectsFromDir } from '@/lib/markdown';
+import { getProjectByIdFromDir } from '@/lib/markdown';
 import { getProject, updateProject } from '@/lib/supabase-adapter';
 import { validateProjectId, validateProjectTitle } from '@/lib/security';
 import { auth, getUserDataDir } from '@/lib/auth';
 import { updateProjectTitle } from '@/lib/markdown-updater';
+import crypto from 'crypto';
 
 // Check if Supabase is configured
 const useSupabase = !!(
@@ -22,6 +23,7 @@ interface RouteContext {
 /**
  * GET /api/v1/projects/[projectId]
  * Returns a specific project by ID
+ * @optimization Added ETag and Cache-Control headers for better caching
  */
 export async function GET(request: NextRequest, context: RouteContext) {
     try {
@@ -53,10 +55,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
             // Use Supabase for project retrieval
             project = await getProject(projectId, userId);
         } else {
-            // Use file-based storage for local development
+            // Use file-based storage - OPTIMIZED: Read only the specific project file
             const dataDir = await getUserDataDir(userId);
-            const projects = await getAllProjectsFromDir(dataDir);
-            project = projects.find((p) => p.id === projectId);
+            project = await getProjectByIdFromDir(dataDir, projectId);
         }
 
         if (!project) {
@@ -66,7 +67,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
             );
         }
 
-        return NextResponse.json(project);
+        // OPTIMIZATION: Generate ETag for cache validation
+        const responseData = JSON.stringify(project);
+        const etag = `"${crypto.createHash('md5').update(responseData).digest('hex')}"`;
+
+        // Check If-None-Match header
+        const ifNoneMatch = request.headers.get('if-none-match');
+        if (ifNoneMatch === etag) {
+            return new NextResponse(null, { status: 304 });
+        }
+
+        // Set cache headers
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'ETag': etag,
+            'Cache-Control': 'private, max-age=60, must-revalidate',
+        });
+
+        return new NextResponse(responseData, { status: 200, headers });
     } catch (error) {
         console.error('Error reading project:', error);
         return NextResponse.json(
@@ -124,10 +142,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             // Update in Supabase
             await updateProject(userId, projectId, trimmedTitle);
         } else {
-            // Update in file-based storage
+            // Update in file-based storage - OPTIMIZED: Read only the specific project
             const dataDir = await getUserDataDir(userId);
-            const projects = await getAllProjectsFromDir(dataDir);
-            const project = projects.find((p) => p.id === projectId);
+            const project = await getProjectByIdFromDir(dataDir, projectId);
 
             if (!project) {
                 return NextResponse.json(

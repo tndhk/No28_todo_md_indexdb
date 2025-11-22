@@ -6,8 +6,7 @@ import { auth, getUserDataDir } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 import { renderMarkdown } from '@/lib/markdown-renderer';
 import { parseMarkdown } from '@/lib/markdown';
-import { getProject, addTask, deleteAllTasksForProject } from '@/lib/supabase-adapter';
-import { Task } from '@/lib/types';
+import { getProject, batchAddTasks, deleteAllTasksForProject } from '@/lib/supabase-adapter';
 
 interface RouteContext {
     params: Promise<{
@@ -167,40 +166,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             // Delete all existing tasks for this project
             await deleteAllTasksForProject(projectId);
 
-            // Recreate all tasks from parsed Markdown
-            // Track new task IDs for parent-child relationships
-            const taskIdMap = new Map<string, string>(); // Maps old ID to new ID
-
-            async function createTasksRecursively(tasksToCreate: Task[]): Promise<void> {
-                for (const task of tasksToCreate) {
-                    // Get parent ID if this is a subtask
-                    let newParentId: string | undefined;
-                    if (task.parentId) {
-                        newParentId = taskIdMap.get(task.parentId);
-                    }
-
-                    // Create the task
-                    const createdTask = await addTask(
-                        projectId,
-                        task.content,
-                        task.status,
-                        task.dueDate,
-                        newParentId,
-                        task.repeatFrequency
-                    );
-
-                    // Store mapping of old ID to new ID
-                    taskIdMap.set(task.id, createdTask.id);
-
-                    // Recursively create subtasks
-                    if (task.subtasks && task.subtasks.length > 0) {
-                        await createTasksRecursively(task.subtasks);
-                    }
-                }
-            }
-
-            // Create all tasks
-            await createTasksRecursively(parsedProject.tasks);
+            // OPTIMIZATION: Use batch insert instead of N individual inserts
+            // This eliminates N+1 queries by using a single batch operation
+            await batchAddTasks(projectId, parsedProject.tasks);
 
             return NextResponse.json({ success: true });
         } else {
