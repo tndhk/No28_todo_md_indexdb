@@ -17,6 +17,23 @@ const mockMarkdownUpdater = markdownUpdater as jest.Mocked<typeof markdownUpdate
 // Get the actual data directory path for test mocks
 const dataDir = path.join(process.cwd(), 'data');
 
+// Helper to create mock NextRequest
+function createMockRequest(method: string = 'GET', body?: unknown): NextRequest {
+  const url = 'http://localhost:3000/api/projects';
+  const init: RequestInit = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  if (body) {
+    init.body = JSON.stringify(body);
+  }
+
+  return new NextRequest(url, init);
+}
+
 describe('API /api/projects', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +51,8 @@ describe('API /api/projects', () => {
       ];
       mockMarkdown.getAllProjects.mockResolvedValue(mockProjects);
 
-      const response = await GET();
+      const request = createMockRequest('GET');
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -44,7 +62,8 @@ describe('API /api/projects', () => {
     it('should return 500 on error', async () => {
       mockMarkdown.getAllProjects.mockRejectedValue(new Error('Read error'));
 
-      const response = await GET();
+      const request = createMockRequest('GET');
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(500);

@@ -30,9 +30,33 @@ describe('lib/api', () => {
     },
   ];
 
+  const mockCsrfToken = 'test-csrf-token';
+  const mockCsrfHeaderName = 'x-csrf-token';
+
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn();
+
+    // Mock fetch to handle both CSRF token requests and actual API requests
+    global.fetch = jest.fn((url: string | URL | Request, _init?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+
+      // Handle CSRF token request
+      if (urlString.includes('/api/csrf')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            csrfToken: mockCsrfToken,
+            headerName: mockCsrfHeaderName,
+          }),
+        } as Response);
+      }
+
+      // For other requests, return empty response (will be overridden by specific tests)
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({}),
+      } as Response);
+    }) as jest.MockedFunction<typeof fetch>;
   });
 
   describe('ApiError', () => {
@@ -111,17 +135,29 @@ describe('lib/api', () => {
   describe('addTask', () => {
     it('should add task with all fields', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       const result = await addTask('test', 'New Task', 'todo', '2025-12-25', 10);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({
           content: 'New Task',
           status: 'todo',
@@ -134,17 +170,29 @@ describe('lib/api', () => {
 
     it('should add task with minimal fields', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await addTask('test', 'Simple Task', 'doing');
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({
           content: 'Simple Task',
           status: 'doing',
@@ -156,10 +204,19 @@ describe('lib/api', () => {
 
     it('should encode project ID in URL', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await addTask('project/with/slashes', 'Task', 'todo');
@@ -172,21 +229,39 @@ describe('lib/api', () => {
 
     it('should throw ApiError on failure', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: 'Invalid task content' }),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid task content' }),
+        } as Response);
+      });
 
       await expect(addTask('test', '', 'todo')).rejects.toThrow('Invalid task content');
     });
 
     it('should validate response schema', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await addTask('test', 'Task', 'todo');
@@ -198,61 +273,106 @@ describe('lib/api', () => {
   describe('updateTask', () => {
     it('should update task content', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await updateTask('test', 5, { content: 'Updated content' });
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/5', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ content: 'Updated content' }),
       });
     });
 
     it('should update task status', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await updateTask('test', 5, { status: 'done' });
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/5', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ status: 'done' }),
       });
     });
 
     it('should update task due date', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await updateTask('test', 5, { dueDate: '2025-12-31' });
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/5', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ dueDate: '2025-12-31' }),
       });
     });
 
     it('should update multiple fields at once', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await updateTask('test', 5, {
@@ -263,7 +383,10 @@ describe('lib/api', () => {
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/5', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({
           content: 'New content',
           status: 'doing',
@@ -274,11 +397,20 @@ describe('lib/api', () => {
 
     it('should throw ApiError on failure', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: async () => ({ error: 'Task not found' }),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: 'Task not found' }),
+        } as Response);
+      });
 
       await expect(updateTask('test', 999, { content: 'New' })).rejects.toThrow(
         'Task not found'
@@ -289,51 +421,93 @@ describe('lib/api', () => {
   describe('deleteTask', () => {
     it('should delete task by line number', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await deleteTask('test', 5);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/5', {
         method: 'DELETE',
+        headers: {
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
       });
     });
 
     it('should encode project ID in URL', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await deleteTask('my-project', 10);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/my-project/tasks/10', {
         method: 'DELETE',
+        headers: {
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
       });
     });
 
     it('should throw ApiError on failure', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: async () => ({ error: 'Failed to delete' }),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: 'Failed to delete' }),
+        } as Response);
+      });
 
       await expect(deleteTask('test', 5)).rejects.toThrow('Failed to delete');
     });
 
     it('should validate response schema', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await deleteTask('test', 5);
@@ -364,45 +538,78 @@ describe('lib/api', () => {
 
     it('should reorder tasks', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await reorderTasks('test', mockTasks);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/reorder', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ tasks: mockTasks }),
       });
     });
 
     it('should handle empty task array', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => mockProjects,
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response);
+      });
       mockValidateProjectsResponse.mockReturnValue(mockProjects);
 
       await reorderTasks('test', []);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/tasks/reorder', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ tasks: [] }),
       });
     });
 
     it('should throw ApiError on failure', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: 'Invalid task order' }),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid task order' }),
+        } as Response);
+      });
 
       await expect(reorderTasks('test', mockTasks)).rejects.toThrow('Invalid task order');
     });
@@ -450,54 +657,96 @@ describe('lib/api', () => {
   describe('saveRawMarkdown', () => {
     it('should save raw markdown content', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({}),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({}),
+        } as Response);
+      });
 
       const content = '# Updated Project\n\n## Todo\n- [ ] New Task';
       await saveRawMarkdown('test', content);
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/raw', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ content }),
       });
     });
 
     it('should handle empty content', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({}),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({}),
+        } as Response);
+      });
 
       await saveRawMarkdown('test', '');
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/test/raw', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [mockCsrfHeaderName]: mockCsrfToken,
+        },
         body: JSON.stringify({ content: '' }),
       });
     });
 
     it('should throw ApiError on failure', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: 'Invalid content' }),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Invalid content' }),
+        } as Response);
+      });
 
       await expect(saveRawMarkdown('test', 'content')).rejects.toThrow('Invalid content');
     });
 
     it('should return void on success', async () => {
       const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({}),
-      } as Response);
+      mockFetch.mockImplementation((url: string | URL | Request) => {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        if (urlString.includes('/api/csrf')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ csrfToken: mockCsrfToken, headerName: mockCsrfHeaderName }),
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({}),
+        } as Response);
+      });
 
       const result = await saveRawMarkdown('test', 'content');
 

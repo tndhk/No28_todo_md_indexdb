@@ -62,11 +62,22 @@ export function validateProjectId(projectId: string): { valid: boolean; error?: 
  * @param text - Text to validate
  * @param fieldName - Name of the field (for error messages)
  * @returns Validation result
+ *
+ * SECURITY: Checks length before regex to prevent ReDoS attacks
  */
 function validateAgainstDangerousPatterns(
     text: string,
     fieldName: string
 ): { valid: boolean; error?: string } {
+    // SECURITY: Early return for overly long input to prevent ReDoS
+    const MAX_VALIDATION_LENGTH = 10000;
+    if (text.length > MAX_VALIDATION_LENGTH) {
+        return {
+            valid: false,
+            error: `${fieldName} is too long for validation (max ${MAX_VALIDATION_LENGTH} characters)`,
+        };
+    }
+
     for (const pattern of DANGEROUS_PATTERNS) {
         if (pattern.test(text)) {
             return {

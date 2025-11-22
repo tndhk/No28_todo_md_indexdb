@@ -15,6 +15,8 @@ import {
 } from '@/lib/security';
 import { apiLogger, logError } from '@/lib/logger';
 import { startApiTransaction, generateRequestId } from '@/lib/monitoring';
+import { checkRateLimit, rateLimiters } from '@/lib/rate-limit';
+import { validateCsrfToken } from '@/lib/csrf';
 import * as Sentry from '@sentry/nextjs';
 
 // Check if Supabase is configured
@@ -24,7 +26,7 @@ const useSupabase = !!(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     const requestId = generateRequestId();
     const transaction = startApiTransaction({
         method: 'GET',
@@ -32,15 +34,48 @@ export async function GET() {
         requestId,
     });
 
+    // SECURITY: Rate limiting - 100 requests per minute
+    const rateLimit = checkRateLimit(request, rateLimiters.api, 100);
+    if (!rateLimit.success) {
+        apiLogger.warn({ requestId, rateLimit }, 'Rate limit exceeded for GET /api/projects');
+        transaction.end(429, { error: 'rate_limit_exceeded' });
+        return NextResponse.json(
+            { error: 'Too many requests. Please try again later.' },
+            {
+                status: 429,
+                headers: {
+                    'X-RateLimit-Limit': rateLimit.limit.toString(),
+                    'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                    'X-RateLimit-Reset': new Date(rateLimit.reset).toISOString(),
+                    'Retry-After': Math.ceil((rateLimit.reset - Date.now()) / 1000).toString(),
+                },
+            }
+        );
+    }
+
     try {
         const projects = await getAllProjects();
         transaction.end(200, { projectCount: projects.length });
-        return NextResponse.json(projects);
+        return NextResponse.json(projects, {
+            headers: {
+                'X-RateLimit-Limit': rateLimit.limit.toString(),
+                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                'X-RateLimit-Reset': new Date(rateLimit.reset).toISOString(),
+            },
+        });
     } catch (error) {
         logError(error, { operation: 'GET /api/projects', requestId }, apiLogger);
         Sentry.captureException(error, { extra: { requestId } });
         transaction.end(500);
-        return NextResponse.json({ error: 'Failed to read projects' }, { status: 500 });
+        // SECURITY: Do not expose internal error details
+        const errorMessage = process.env.NODE_ENV === 'production'
+            ? 'An error occurred while loading projects'
+            : 'Failed to read projects';
+        return NextResponse.json({
+            error: errorMessage,
+            code: 'INTERNAL_ERROR',
+            requestId,
+        }, { status: 500 });
     }
 }
 
@@ -51,6 +86,36 @@ export async function POST(request: NextRequest) {
         path: '/api/projects',
         requestId,
     });
+
+    // SECURITY: Rate limiting - 30 write operations per minute
+    const rateLimit = checkRateLimit(request, rateLimiters.write, 30);
+    if (!rateLimit.success) {
+        apiLogger.warn({ requestId, rateLimit }, 'Rate limit exceeded for POST /api/projects');
+        transaction.end(429, { error: 'rate_limit_exceeded' });
+        return NextResponse.json(
+            { error: 'Too many requests. Please try again later.' },
+            {
+                status: 429,
+                headers: {
+                    'X-RateLimit-Limit': rateLimit.limit.toString(),
+                    'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                    'X-RateLimit-Reset': new Date(rateLimit.reset).toISOString(),
+                    'Retry-After': Math.ceil((rateLimit.reset - Date.now()) / 1000).toString(),
+                },
+            }
+        );
+    }
+
+    // SECURITY: CSRF protection for state-changing operations
+    const isValidCsrf = await validateCsrfToken(request);
+    if (!isValidCsrf) {
+        apiLogger.warn({ requestId }, 'Invalid CSRF token for POST /api/projects');
+        transaction.end(403, { error: 'invalid_csrf_token' });
+        return NextResponse.json(
+            { error: 'Invalid CSRF token. Please refresh the page and try again.' },
+            { status: 403 }
+        );
+    }
 
     try {
         const body = await request.json();
@@ -277,12 +342,25 @@ export async function POST(request: NextRequest) {
             projectId,
         }, `Successfully completed ${action} action for project ${projectId}`);
         transaction.end(200, { action, projectId });
-        return NextResponse.json(updatedProjects);
+        return NextResponse.json(updatedProjects, {
+            headers: {
+                'X-RateLimit-Limit': rateLimit.limit.toString(),
+                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                'X-RateLimit-Reset': new Date(rateLimit.reset).toISOString(),
+            },
+        });
     } catch (error) {
         logError(error, { operation: 'POST /api/projects', requestId, action: 'unknown' }, apiLogger);
         Sentry.captureException(error, { extra: { requestId } });
         transaction.end(500);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to update project';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        // SECURITY: Do not expose internal error details in production
+        const errorMessage = process.env.NODE_ENV === 'production'
+            ? 'An error occurred while processing your request'
+            : (error instanceof Error ? error.message : 'Failed to update project');
+        return NextResponse.json({
+            error: errorMessage,
+            code: 'INTERNAL_ERROR',
+            requestId, // Include for debugging
+        }, { status: 500 });
     }
 }

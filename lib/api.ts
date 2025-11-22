@@ -7,6 +7,7 @@ import {
 /**
  * API client with runtime type validation
  * All API responses are validated against Zod schemas
+ * SECURITY: Includes CSRF protection for state-changing requests
  */
 
 export class ApiError extends Error {
@@ -17,6 +18,47 @@ export class ApiError extends Error {
         this.name = 'ApiError';
         this.statusCode = statusCode;
     }
+}
+
+/**
+ * CSRF token management
+ * SECURITY: Protects against Cross-Site Request Forgery attacks
+ */
+let csrfToken: string | null = null;
+let csrfHeaderName: string | null = null;
+
+async function getCsrfToken(): Promise<{ token: string; headerName: string }> {
+    if (csrfToken && csrfHeaderName) {
+        return { token: csrfToken, headerName: csrfHeaderName };
+    }
+
+    try {
+        const res = await fetch('/api/csrf');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.csrfToken && data.headerName) {
+                csrfToken = data.csrfToken;
+                csrfHeaderName = data.headerName;
+                return { token: data.csrfToken, headerName: data.headerName };
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+    }
+
+    // Fallback if CSRF endpoint fails
+    return { token: '', headerName: 'x-csrf-token' };
+}
+
+/**
+ * Helper: Add CSRF token to request headers
+ */
+async function addCsrfHeader(headers: HeadersInit = {}): Promise<HeadersInit> {
+    const { token, headerName } = await getCsrfToken();
+    return {
+        ...headers,
+        [headerName]: token,
+    };
 }
 
 /**
@@ -43,7 +85,7 @@ export async function fetchProjects(): Promise<Project[]> {
 export async function createProject(title: string): Promise<Project> {
     const res = await fetch('/api/v1/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title }),
     });
 
@@ -63,7 +105,7 @@ export async function createProject(title: string): Promise<Project> {
 export async function updateProjectTitle(projectId: string, title: string): Promise<void> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title }),
     });
 
@@ -88,7 +130,7 @@ export async function addTask(
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
             content,
             status,
@@ -124,7 +166,7 @@ export async function updateTask(
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(updates),
     });
 
@@ -148,6 +190,7 @@ export async function deleteTask(
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${lineNumber}`, {
         method: 'DELETE',
+        headers: await addCsrfHeader({}),
     });
 
     if (!res.ok) {
@@ -170,7 +213,7 @@ export async function reorderTasks(
 ): Promise<Project[]> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/tasks/reorder`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ tasks }),
     });
 
@@ -213,7 +256,7 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
 export async function saveRawMarkdown(projectId: string, content: string): Promise<void> {
     const res = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/raw`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await addCsrfHeader({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ content }),
     });
 

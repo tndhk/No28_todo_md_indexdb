@@ -33,7 +33,7 @@ export async function getAllProjects(): Promise<Project[]> {
             securityLogger.info({
                 hasSession: !!session,
                 hasUserId: !!session?.user?.id,
-                userId: session?.user?.id,
+                // SECURITY: Do not log userId - potential PII leak
             }, '[getAllProjects] Auth session check');
         }
 
@@ -45,7 +45,7 @@ export async function getAllProjects(): Promise<Project[]> {
         if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
             securityLogger.info({
                 projectCount: projects.length,
-                userId: session.user.id,
+                // SECURITY: Do not log userId - potential PII leak
             }, '[getAllProjects] Projects loaded from Supabase');
         }
         return projects;

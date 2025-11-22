@@ -39,12 +39,17 @@ export const H2_HEADER_PATTERN = /^## /;
 /**
  * Dangerous HTML/JavaScript patterns that could lead to XSS or injection attacks
  * Used for validating user input in project titles and task content
+ *
+ * SECURITY: Patterns optimized to prevent ReDoS (Regular Expression Denial of Service)
+ * - Using \b for word boundaries instead of [^>]*
+ * - Using [\s\S] instead of . to avoid backtracking issues
+ * - Limiting quantifiers where possible
  */
 export const DANGEROUS_PATTERNS = [
-    /<script[^>]*>.*?<\/script>/gi,
-    /<iframe[^>]*>.*?<\/iframe>/gi,
-    /<object[^>]*>.*?<\/object>/gi,
-    /<embed[^>]*>/gi,
+    /<script\b[^>]{0,100}>[\s\S]{0,1000}<\/script>/gi,  // Limited quantifiers
+    /<iframe\b[^>]{0,100}>[\s\S]{0,1000}<\/iframe>/gi,  // Limited quantifiers
+    /<object\b[^>]{0,100}>[\s\S]{0,1000}<\/object>/gi,  // Limited quantifiers
+    /<embed\b[^>]{0,100}>/gi,
     /javascript:/gi,
     /on\w+\s*=/gi, // Event handlers like onclick=, onload=, etc.
 ] as const;

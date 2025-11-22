@@ -52,7 +52,21 @@ const baseConfig: pino.LoggerOptions = {
     level: (label) => ({ level: label }),
   },
   redact: {
-    paths: ['password', 'token', 'secret', 'authorization', '*.password', '*.token', '*.secret'],
+    paths: [
+      'password',
+      'token',
+      'secret',
+      'authorization',
+      'userId',
+      'user.id',
+      'user.email',
+      '*.password',
+      '*.token',
+      '*.secret',
+      '*.userId',
+      'req.headers.authorization',
+      'req.headers.cookie',
+    ],
     censor: '[REDACTED]',
   },
 };
