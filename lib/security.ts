@@ -70,6 +70,22 @@ export function validateProjectTitle(title: string): { valid: boolean; error?: s
         return { valid: false, error: 'Project title is too long (max 100 characters)' };
     }
 
+    // Prevent HTML/Script tags to avoid injection attacks
+    const dangerousPatterns = [
+        /<script[^>]*>.*?<\/script>/gi,
+        /<iframe[^>]*>.*?<\/iframe>/gi,
+        /<object[^>]*>.*?<\/object>/gi,
+        /<embed[^>]*>/gi,
+        /javascript:/gi,
+        /on\w+\s*=/gi, // Event handlers like onclick=, onload=, etc.
+    ];
+
+    for (const pattern of dangerousPatterns) {
+        if (pattern.test(title)) {
+            return { valid: false, error: 'Project title contains potentially dangerous HTML/JavaScript code' };
+        }
+    }
+
     return { valid: true };
 }
 
@@ -93,10 +109,32 @@ export function validateTaskContent(content: string): { valid: boolean; error?: 
         return { valid: false, error: `Task content is too long (max ${config.maxContentLength} characters)` };
     }
 
+    // Prevent HTML/Script tags to avoid injection attacks
+    const dangerousPatterns = [
+        /<script[^>]*>.*?<\/script>/gi,
+        /<iframe[^>]*>.*?<\/iframe>/gi,
+        /<object[^>]*>.*?<\/object>/gi,
+        /<embed[^>]*>/gi,
+        /javascript:/gi,
+        /on\w+\s*=/gi, // Event handlers like onclick=, onload=, etc.
+    ];
+
+    for (const pattern of dangerousPatterns) {
+        if (pattern.test(content)) {
+            return { valid: false, error: 'Task content contains potentially dangerous HTML/JavaScript code' };
+        }
+    }
+
     // Prevent multiple #due: tags (could cause parsing issues)
     const dueTags = (content.match(/#due:/g) || []).length;
     if (dueTags > 1) {
         return { valid: false, error: 'Task content cannot contain multiple #due: tags' };
+    }
+
+    // Prevent multiple #repeat: tags (could cause parsing issues)
+    const repeatTags = (content.match(/#repeat:/g) || []).length;
+    if (repeatTags > 1) {
+        return { valid: false, error: 'Task content cannot contain multiple #repeat: tags' };
     }
 
     return { valid: true };
@@ -174,6 +212,8 @@ export function sanitizeContent(content: string): string {
         .trim()
         // Remove any existing #due: tags (they'll be added back properly)
         .replace(/#due:\d{4}-\d{2}-\d{2}/g, '')
+        // Remove any existing #repeat: tags (they'll be added back properly)
+        .replace(/#repeat:(daily|weekly|monthly)/g, '')
         .trim();
 }
 

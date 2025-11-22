@@ -61,6 +61,7 @@ export default function AddTaskModal({
                             placeholder="Enter task description..."
                             autoFocus
                             className={styles.input}
+                            maxLength={500}
                         />
                     </div>
 

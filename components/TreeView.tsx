@@ -122,6 +122,7 @@ function TaskItem({
                             onKeyDown={handleKeyDown}
                             className={styles.editInput}
                             autoFocus
+                            maxLength={500}
                         />
                         <input
                             type="date"
