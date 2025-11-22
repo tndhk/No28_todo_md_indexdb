@@ -37,7 +37,7 @@ describe('lib/api', () => {
     jest.clearAllMocks();
 
     // Mock fetch to handle both CSRF token requests and actual API requests
-    global.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+    global.fetch = jest.fn((url: string | URL | Request, _init?: RequestInit) => {
       const urlString = typeof url === 'string' ? url : url.toString();
 
       // Handle CSRF token request

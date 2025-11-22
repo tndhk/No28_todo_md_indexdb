@@ -18,7 +18,7 @@ const mockMarkdownUpdater = markdownUpdater as jest.Mocked<typeof markdownUpdate
 const dataDir = path.join(process.cwd(), 'data');
 
 // Helper to create mock NextRequest
-function createMockRequest(method: string = 'GET', body?: any): NextRequest {
+function createMockRequest(method: string = 'GET', body?: unknown): NextRequest {
   const url = 'http://localhost:3000/api/projects';
   const init: RequestInit = {
     method,
