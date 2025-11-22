@@ -226,8 +226,16 @@ export default function TreeView({
         const { active, over } = event;
 
         if (active.id !== over?.id && onTaskReorder) {
-            const oldIndex = tasks.findIndex((t) => t.id === active.id);
-            const newIndex = tasks.findIndex((t) => t.id === over?.id);
+            // Optimize: find both indices in a single pass - O(n) instead of O(2n)
+            let oldIndex = -1;
+            let newIndex = -1;
+
+            for (let i = 0; i < tasks.length; i++) {
+                if (tasks[i].id === active.id) oldIndex = i;
+                if (tasks[i].id === over?.id) newIndex = i;
+                // Early exit when both found
+                if (oldIndex !== -1 && newIndex !== -1) break;
+            }
 
             if (oldIndex !== -1 && newIndex !== -1) {
                 const newTasks = arrayMove(tasks, oldIndex, newIndex);

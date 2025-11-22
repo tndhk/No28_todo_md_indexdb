@@ -89,6 +89,13 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
     const [displayDate, setDisplayDate] = useState(new Date());
 
+    // Optimization: Create task ID lookup map to avoid repeated linear searches - O(1) lookup instead of O(n)
+    const taskMap = useMemo(() => {
+        const map = new Map<string, Task>();
+        allTasks.forEach(task => map.set(task.id, task));
+        return map;
+    }, [allTasks]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -143,8 +150,8 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         const taskId = active.id as string;
         const newDate = over.id as string;
 
-        // Find the task
-        const task = allTasks.find((t) => t.id === taskId);
+        // Find the task using map - O(1) instead of O(n)
+        const task = taskMap.get(taskId);
         if (!task || task.dueDate === newDate) return;
 
         // Update task due date
@@ -159,7 +166,8 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             collisionDetection={closestCorners}
             onDragEnd={handleDragEnd}
             onDragStart={(event) => {
-                const task = allTasks.find((t) => t.id === event.active.id);
+                // Use map for O(1) lookup instead of O(n) find
+                const task = taskMap.get(event.active.id as string);
                 if (task) setDraggedTask(task);
             }}
         >

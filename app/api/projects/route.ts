@@ -182,21 +182,19 @@ export async function POST(request: NextRequest) {
                     // Check if this is a recurring task being marked as done
                     if (updates?.status === 'done' && task.repeatFrequency) {
                         // For recurring tasks, we need the full task object with content
-                        // Find the full task from the project
-                        const findFullTask = (tasks: Task[]): Task | null => {
-                            for (const t of tasks) {
-                                if (t.id === task.id) {
-                                    return t;
-                                }
+                        // Optimization: Build task map once instead of recursive search - O(n) instead of O(n) per call
+                        const taskMap = new Map<string, Task>();
+                        const buildTaskMap = (tasks: Task[]) => {
+                            tasks.forEach((t) => {
+                                taskMap.set(t.id, t);
                                 if (t.subtasks?.length > 0) {
-                                    const found = findFullTask(t.subtasks);
-                                    if (found) return found;
+                                    buildTaskMap(t.subtasks);
                                 }
-                            }
-                            return null;
+                            });
                         };
+                        buildTaskMap(project.tasks);
 
-                        const fullTask = findFullTask(project.tasks);
+                        const fullTask = taskMap.get(task.id);
                         if (fullTask) {
                             // handleRecurringTask handles marking as done and creating next occurrence
                             if (useSupabase) {

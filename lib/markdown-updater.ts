@@ -11,6 +11,7 @@ import {
  * Updates multiple tasks in a markdown file based on their line numbers
  * @param filePath - Path to the markdown file
  * @param tasks - Array of tasks with updated data
+ * @optimization Only update lines that changed to reduce memory allocation
  */
 export function updateMarkdown(filePath: string, tasks: Task[]): void {
     const config = getConfig();
@@ -29,23 +30,20 @@ export function updateMarkdown(filePath: string, tasks: Task[]): void {
     }
     mapTasks(tasks);
 
-    // Update lines
-    const updatedLines = lines.map((line, index) => {
-        const lineNumber = index + 1;
-        const task = taskMap.get(lineNumber);
-
-        if (task) {
+    // Update only modified lines in-place - more memory efficient
+    taskMap.forEach((task, lineNumber) => {
+        const index = lineNumber - 1;
+        if (index >= 0 && index < lines.length) {
+            const line = lines[index];
             const indent = line.match(/^(\s*)/)?.[1] || '';
             const checkbox = task.status === 'done' ? '[x]' : '[ ]';
             const dueTag = task.dueDate ? ` #due:${task.dueDate}` : '';
             const repeatTag = task.repeatFrequency ? ` #repeat:${task.repeatFrequency}` : '';
-            return `${indent}- ${checkbox} ${task.content}${dueTag}${repeatTag}`;
+            lines[index] = `${indent}- ${checkbox} ${task.content}${dueTag}${repeatTag}`;
         }
-
-        return line;
     });
 
-    fs.writeFileSync(filePath, updatedLines.join('\n'), config.fileEncoding);
+    fs.writeFileSync(filePath, lines.join('\n'), config.fileEncoding);
 }
 
 /**
@@ -244,6 +242,7 @@ export function addTask(
  * Deletes a task and all its subtasks from a markdown file
  * @param filePath - Path to the markdown file
  * @param lineNumber - Line number of the task to delete (1-indexed)
+ * @optimization Improved from O(n²) to O(n) by using filter instead of multiple splice operations
  */
 export function deleteTask(filePath: string, lineNumber: number): void {
     const config = getConfig();
@@ -253,8 +252,8 @@ export function deleteTask(filePath: string, lineNumber: number): void {
     const targetLine = lines[lineNumber - 1];
     const targetIndent = targetLine.match(/^(\s*)/)?.[1]?.length || 0;
 
-    // Find all child lines to delete
-    const linesToDelete = [lineNumber - 1];
+    // Mark deletion range
+    let deleteUntil = lineNumber; // exclusive end index (0-indexed)
     for (let i = lineNumber; i < lines.length; i++) {
         const line = lines[i];
         const currentIndent = line.match(/^(\s*)/)?.[1]?.length || 0;
@@ -262,15 +261,16 @@ export function deleteTask(filePath: string, lineNumber: number): void {
         if (line.trim() && currentIndent <= targetIndent) {
             break;
         }
-        linesToDelete.push(i);
+        deleteUntil = i + 1;
     }
 
-    // Delete lines in reverse order
-    linesToDelete.reverse().forEach((index) => {
-        lines.splice(index, 1);
-    });
+    // Filter out deleted lines in one pass - O(n) instead of O(n²)
+    const deleteStart = lineNumber - 1; // inclusive start index (0-indexed)
+    const filteredLines = lines.filter((_, index) =>
+        index < deleteStart || index >= deleteUntil
+    );
 
-    fs.writeFileSync(filePath, lines.join('\n'), config.fileEncoding);
+    fs.writeFileSync(filePath, filteredLines.join('\n'), config.fileEncoding);
 }
 
 /**
