@@ -1,0 +1,64 @@
+name: Security Audit
+
+on:
+  # Run on push to main branch
+  push:
+    branches:
+      - main
+  # Run on pull requests
+  pull_request:
+  # Run weekly on Sundays at midnight UTC
+  schedule:
+    - cron: '0 0 * * 0'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  npm-audit:
+    name: NPM Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+        id: npm-audit
+
+      - name: Run npm audit (production only)
+        run: npm audit --production --audit-level=high
+        id: npm-audit-prod
+
+      - name: Check for vulnerabilities
+        if: steps.npm-audit-prod.outcome == 'failure'
+        run: |
+          echo "::error::High or critical vulnerabilities found in production dependencies"
+          exit 1
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    # Only run on pull requests
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true  # Optional: Requires Dependency graph to be enabled
+        with:
+          fail-on-severity: moderate
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
