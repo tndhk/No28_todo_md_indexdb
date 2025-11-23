@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { fetchRawMarkdown, saveRawMarkdown, getErrorMessage } from '@/lib/api';
+import { fetchRawMarkdown, saveRawMarkdown, getErrorMessage } from '@/lib/api-indexeddb';
 import styles from './MDView.module.css';
 
 interface MDViewProps {
