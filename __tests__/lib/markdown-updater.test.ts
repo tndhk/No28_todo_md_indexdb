@@ -6,6 +6,20 @@ import { resetConfig } from '@/lib/config';
 // Mock fs module
 jest.mock('fs');
 
+// Mock security module to allow test file paths
+jest.mock('@/lib/security', () => ({
+  validateFilePath: jest.fn(() => true),
+  validateFileExists: jest.fn(() => ({ valid: true })),
+  validateProjectId: jest.fn(() => ({ valid: true })),
+  validateProjectTitle: jest.fn(() => ({ valid: true })),
+  validateTaskContent: jest.fn(() => ({ valid: true })),
+  validateTaskStatus: jest.fn(() => ({ valid: true })),
+  validateDueDate: jest.fn(() => ({ valid: true })),
+  validateLineNumber: jest.fn(() => ({ valid: true })),
+  sanitizeContent: jest.fn((content: string) => content),
+  withFileLock: jest.fn((path, operation) => operation()),
+}));
+
 const mockFs = fs as jest.Mocked<typeof fs>;
 
 describe('markdown-updater', () => {

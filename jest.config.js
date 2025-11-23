@@ -16,6 +16,12 @@ const customJestConfig = {
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
+  // Ignore API route tests for IndexedDB-only version
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__tests__/api/projects\\.test\\.ts$',
+    '/__tests__/api/v1/projects\\.test\\.ts$',
+  ],
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',

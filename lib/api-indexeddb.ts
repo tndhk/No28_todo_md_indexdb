@@ -5,6 +5,13 @@
 
 import { Task, TaskStatus, Project, RepeatFrequency } from './types';
 import * as idb from './indexeddb';
+import {
+    validateProjectId,
+    validateProjectTitle,
+    validateTaskContent,
+    validateTaskStatus,
+    validateDueDate,
+} from './validation';
 
 export class ApiError extends Error {
     public readonly statusCode: number;
@@ -38,14 +45,27 @@ export async function fetchProjects(): Promise<Project[]> {
 
 /**
  * Create a new project
+ * @security Validates project title and ID to prevent XSS and injection attacks
  */
 export async function createProject(title: string): Promise<Project> {
     try {
+        // SECURITY: Validate project title
+        const titleValidation = validateProjectTitle(title);
+        if (!titleValidation.valid) {
+            throw new ApiError(titleValidation.error || 'Invalid project title', 400);
+        }
+
         // Generate project ID from title (slugify)
         const id = title
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '') || 'untitled';
+
+        // SECURITY: Validate generated project ID
+        const idValidation = validateProjectId(id);
+        if (!idValidation.valid) {
+            throw new ApiError(idValidation.error || 'Invalid project ID', 400);
+        }
 
         // Check if project already exists
         const existing = await idb.getProjectById(id);
@@ -72,9 +92,16 @@ export async function createProject(title: string): Promise<Project> {
 
 /**
  * Update a project's title
+ * @security Validates project title to prevent XSS attacks
  */
 export async function updateProjectTitle(projectId: string, title: string): Promise<void> {
     try {
+        // SECURITY: Validate project title
+        const titleValidation = validateProjectTitle(title);
+        if (!titleValidation.valid) {
+            throw new ApiError(titleValidation.error || 'Invalid project title', 400);
+        }
+
         const project = await idb.getProjectById(projectId);
         if (!project) {
             throw new ApiError('Project not found', 404);
@@ -91,6 +118,7 @@ export async function updateProjectTitle(projectId: string, title: string): Prom
 /**
  * Add a new task
  * Note: lineNumber is ignored in IndexedDB mode, parentId should be used instead
+ * @security Validates task content, status, and due date to prevent attacks
  */
 export async function addTask(
     projectId: string,
@@ -102,9 +130,30 @@ export async function addTask(
     parentId?: string // Use this instead of parentLineNumber
 ): Promise<Project[]> {
     try {
+        // SECURITY: Validate task content
+        const contentValidation = validateTaskContent(content);
+        if (!contentValidation.valid) {
+            throw new ApiError(contentValidation.error || 'Invalid task content', 400);
+        }
+
+        // SECURITY: Validate task status
+        const statusValidation = validateTaskStatus(status);
+        if (!statusValidation.valid) {
+            throw new ApiError(statusValidation.error || 'Invalid task status', 400);
+        }
+
+        // SECURITY: Validate due date if provided
+        if (dueDate) {
+            const dueDateValidation = validateDueDate(dueDate);
+            if (!dueDateValidation.valid) {
+                throw new ApiError(dueDateValidation.error || 'Invalid due date', 400);
+            }
+        }
+
         await idb.addTask(projectId, content, status, dueDate, parentId, repeatFrequency);
         return await idb.getAllProjects();
     } catch (error) {
+        if (error instanceof ApiError) throw error;
         console.error('Failed to add task:', error);
         throw new ApiError('Failed to add task', 500);
     }
@@ -113,6 +162,7 @@ export async function addTask(
 /**
  * Update a task's properties
  * Note: lineNumber is used to identify the task in file mode, but in IndexedDB mode we need taskId
+ * @security Validates task updates to prevent attacks
  */
 export async function updateTask(
     projectId: string,
@@ -128,6 +178,30 @@ export async function updateTask(
     try {
         if (!taskId) {
             throw new ApiError('Task ID is required for IndexedDB mode', 400);
+        }
+
+        // SECURITY: Validate content if provided
+        if (updates.content !== undefined) {
+            const contentValidation = validateTaskContent(updates.content);
+            if (!contentValidation.valid) {
+                throw new ApiError(contentValidation.error || 'Invalid task content', 400);
+            }
+        }
+
+        // SECURITY: Validate status if provided
+        if (updates.status !== undefined) {
+            const statusValidation = validateTaskStatus(updates.status);
+            if (!statusValidation.valid) {
+                throw new ApiError(statusValidation.error || 'Invalid task status', 400);
+            }
+        }
+
+        // SECURITY: Validate due date if provided
+        if (updates.dueDate !== undefined) {
+            const dueDateValidation = validateDueDate(updates.dueDate);
+            if (!dueDateValidation.valid) {
+                throw new ApiError(dueDateValidation.error || 'Invalid due date', 400);
+            }
         }
 
         // Check if this is a recurring task being marked as done
@@ -347,7 +421,8 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             }
 
             const newTask: Task = {
-                id: `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() and substring() instead of Math.random() and substr()
+                id: `${projectId}-${Date.now()}-${crypto.randomUUID()}`,
                 content,
                 status: isChecked ? 'done' : currentSection,
                 dueDate,

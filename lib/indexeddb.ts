@@ -76,10 +76,12 @@ export async function addProject(project: Omit<Project, 'path'>): Promise<void> 
 
 /**
  * Update an existing project
+ * @performance Fixed async Promise constructor anti-pattern
  */
 export async function updateProject(project: Partial<Project> & { id: string }): Promise<void> {
     const db = await openDatabase();
-    return new Promise(async (resolve, reject) => {
+    // PERFORMANCE: Removed async Promise constructor anti-pattern
+    return new Promise((resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
         const store = transaction.objectStore(PROJECTS_STORE);
 
@@ -121,10 +123,13 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 /**
- * Generate a unique task ID
+ * Generate a unique task ID using cryptographically secure random values
+ * @security Uses crypto.randomUUID() instead of Math.random() for unpredictability
  */
 function generateTaskId(projectId: string): string {
-    return `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // SECURITY: Use crypto.randomUUID() for cryptographically secure random IDs
+    // This prevents task ID prediction attacks
+    return `${projectId}-${Date.now()}-${crypto.randomUUID()}`;
 }
 
 /**

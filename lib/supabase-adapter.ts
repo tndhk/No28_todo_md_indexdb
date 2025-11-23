@@ -302,7 +302,8 @@ export async function addTask(
     }
 
     // Generate task ID
-    const taskId = `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
+    const taskId = `${projectId}-${Date.now()}-${crypto.randomUUID()}`;
 
     const { data, error } = await supabaseAdmin
         .from('tasks')
@@ -361,7 +362,8 @@ export async function batchAddTasks(
     // Flatten tasks recursively into insertion array
     function flattenTasks(taskList: Task[], indentLevel = 0) {
         for (const task of taskList) {
-            const taskId = `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
+            const taskId = `${projectId}-${Date.now()}-${crypto.randomUUID()}`;
             const parentId = task.parentId ? (parentIdMap.get(task.parentId) ?? null) : null;
 
             tasksToInsert.push({
