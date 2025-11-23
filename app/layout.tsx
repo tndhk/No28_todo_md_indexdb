@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import SessionProvider from '@/components/SessionProvider'
 
 export const metadata: Metadata = {
-  title: 'Markdown Todo',
-  description: 'A premium local-first todo app',
+  title: 'Markdown Todo - IndexedDB Edition',
+  description: 'A local-first todo app powered by IndexedDB',
 }
 
 export default function RootLayout({
@@ -15,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-        <SessionProvider>{children}</SessionProvider>
+        {children}
       </body>
     </html>
   )
