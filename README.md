@@ -1,9 +1,9 @@
 # Markdown Todo
 
-A modern task management application with **Supabase database** and **Markdown format support**. This app provides an intuitive interface for managing tasks and subtasks with multiple views for different workflows.
+A modern task management application with **IndexedDB browser storage** and **Markdown format support**. This app provides an intuitive interface for managing tasks and subtasks with multiple views for different workflows.
 
 **Features:**
-- 🗄️ Supabase database backend - persistent task storage with real-time sync
+- 🗄️ IndexedDB backend - client-side persistent storage, no server required
 - 📝 Markdown-based editing - view and edit tasks as human-readable Markdown
 - 🌳 Tree View - hierarchical task organization with drag-and-drop reordering
 - 📅 Calendar View - tasks organized by due date for weekly planning
@@ -12,7 +12,7 @@ A modern task management application with **Supabase database** and **Markdown f
 - 🔁 Recurring tasks - automatically recreate daily, weekly, or monthly tasks
 - 📦 Subtask support - organize complex tasks into nested subtasks
 - 🎨 Clean, modern UI - built with React and Next.js
-- 🔄 Dual-mode storage - Supabase or file-based fallback
+- 💾 Offline-first - all data stored locally in your browser
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ A modern task management application with **Supabase database** and **Markdown f
 
 ```bash
 # Clone the repository
-git clone https://github.com/tndhk/No26_todo_md.git
+git clone https://github.com/tndhk/No28_todo_md_indexdb.git
 cd No26_todo_md
 
 # Install dependencies
@@ -74,20 +74,15 @@ npm start
 │   └── *.module.css               # Component-specific styles
 ├── lib/
 │   ├── types.ts                   # TypeScript type definitions
+│   ├── indexeddb.ts               # IndexedDB operations (CRUD, recurring tasks)
+│   ├── api-indexeddb.ts           # IndexedDB-based API client
 │   ├── markdown.ts                # Markdown parsing logic
-│   ├── markdown-updater.ts        # Markdown file mutations (file-based mode)
 │   ├── markdown-renderer.ts       # Markdown rendering from DB objects
-│   ├── supabase-adapter.ts        # Supabase database operations
-│   ├── supabase-client.ts         # Supabase client initialization
-│   ├── api.ts                     # Frontend API utilities
-│   ├── auth.ts                    # Authentication utilities
 │   ├── security.ts                # Input validation and security
 │   ├── config.ts                  # Application configuration
 │   ├── logger.ts                  # Logging utilities
 │   ├── monitoring.ts              # Performance monitoring
 │   └── confetti.ts                # Celebration effect
-├── data/
-│   └── *.md                       # Fallback markdown files (file-based mode)
 ├── middleware.ts                  # NextAuth middleware
 ├── .env.local                      # Environment variables (see Configuration section)
 └── package.json
@@ -95,23 +90,26 @@ npm start
 
 ## Storage Architecture
 
-### Supabase Database Mode (Default)
-When `USE_SUPABASE=true` is set, tasks are stored in a Supabase PostgreSQL database:
-- **Projects table** - Stores project metadata (id, title, user_id)
-- **Tasks table** - Stores individual tasks with hierarchy and status
+### IndexedDB Browser Storage
+All tasks are stored in **IndexedDB**, a client-side database built into modern web browsers:
 
-Benefits:
-- Real-time data persistence
-- Multi-user support with authentication
-- Scalable for production deployments
-- Automatic backups
+**Data Model:**
+- **Projects store** - Stores project objects with embedded task hierarchies
+- Each project contains: `id`, `title`, `tasks[]`, and `path` (empty string)
+- Tasks are stored as nested objects within their parent project
 
-### File-based Mode (Fallback)
-When `USE_SUPABASE` is not set or false, tasks are stored as Markdown files in the `data/` directory:
-- Simple text files for easy version control
-- Portable and human-readable
-- Works offline without database setup
-- Good for single-user local development
+**Benefits:**
+- **Offline-first** - Works completely offline, no server required
+- **Fast** - Direct browser storage with instant read/write
+- **Private** - All data stays on your device
+- **Persistent** - Data survives page refreshes and browser restarts
+- **No setup** - No database configuration or API keys needed
+
+**Technical Details:**
+- Database name: `MarkdownTodoDB`
+- Object store: `projects` (keyPath: `id`)
+- Tasks use generated IDs: `{projectId}-{timestamp}-{random}`
+- Markdown format is preserved for import/export compatibility
 
 ## Data Format
 
@@ -193,23 +191,24 @@ The Markdown View allows you to edit the entire project as raw Markdown text. Ch
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root with the following variables:
+IndexedDB mode requires **no environment variables** for basic operation. All data is stored locally in your browser.
 
-#### Supabase Configuration (Optional)
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-USE_SUPABASE=true
-```
+Optional configuration (create `.env.local` if needed):
 
-#### NextAuth Configuration
 ```env
+# Optional: NextAuth configuration (if authentication is enabled)
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
+
+# Optional: Application settings
+DATA_DIR=./data
+FILE_ENCODING=utf-8
+INDENT_SPACES=4
+MAX_CONTENT_LENGTH=500
+MAX_PROJECT_ID_LENGTH=100
 ```
 
-Set `USE_SUPABASE=false` or omit it to use file-based storage mode.
+**Note:** The `DATA_DIR` setting is not used in IndexedDB mode but may be referenced by legacy code.
 
 ## API Endpoints
 
@@ -336,49 +335,52 @@ npm run lint
 
 ## Deployment
 
-### Vercel Deployment
+### Static Site Deployment
 
-This application is optimized for Vercel serverless deployment:
+This application uses **IndexedDB** for client-side storage, making it perfect for static site deployment:
 
-1. **Set environment variables** on Vercel:
-   - All Supabase credentials (NEXT_PUBLIC_SUPABASE_URL, etc.)
-   - NextAuth credentials
-   - `USE_SUPABASE=true` to enable database mode
+**Deployment Platforms:**
+- ✅ **Vercel** - Zero configuration, automatic deployments
+- ✅ **Netlify** - Static hosting with instant cache invalidation
+- ✅ **GitHub Pages** - Free hosting for public repositories
+- ✅ **Cloudflare Pages** - Fast global CDN deployment
+- ✅ **Any static host** - No server-side requirements
 
-2. **Database setup**:
-   - Create a Supabase project at [supabase.com](https://supabase.com)
-   - Run the migration scripts to create `projects` and `tasks` tables
-   - Set the service role key in environment variables
+**Deployment Steps:**
 
-3. **File system considerations**:
-   - Vercel's serverless environment has read-only filesystem
-   - File-based storage mode will not persist data on Vercel
-   - Always use `USE_SUPABASE=true` in production
+1. **Build the application:**
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy the `out/` or `.next/` directory** to your hosting platform
+
+3. **No environment variables required** - IndexedDB works entirely client-side
+
+**Benefits of IndexedDB deployment:**
+- 📦 No database setup or API keys needed
+- 🚀 Deploy anywhere that serves static files
+- 💰 Free hosting on most platforms
+- 🌍 Works offline after first load
+- 🔒 User data stays private on their device
 
 ### Local Development
 
-For local development, you can use either storage mode:
-
-**With Supabase:**
 ```bash
-# Set up .env.local with Supabase credentials
-USE_SUPABASE=true
+# No configuration needed
 npm run dev
 ```
 
-**With file-based storage (no Supabase):**
-```bash
-# No Supabase variables needed
-npm run dev
-```
+Open [http://localhost:3000](http://localhost:3000) and start using the app immediately.
 
 ## Troubleshooting
 
 ### Tasks not saving?
-- If using Supabase mode, check that all Supabase environment variables are set
-- Check browser console for API errors
-- Verify that the Supabase project is accessible
-- Ensure `data/` directory exists and is writable if using file-based mode
+- **Check browser console** for IndexedDB errors
+- **Verify browser support** - IndexedDB is supported in all modern browsers
+- **Check storage quota** - Browser may block IndexedDB if storage is full
+- **Try incognito mode** - Extensions or privacy settings may block IndexedDB
+- **Clear browser data** - Corrupted IndexedDB can be reset via browser settings
 
 ### Markdown View showing errors?
 - Ensure task IDs are properly formatted
@@ -389,13 +391,18 @@ npm run dev
 - Try refreshing the page
 - Check that due dates are in `YYYY-MM-DD` format
 - Ensure proper markdown indentation (4 spaces per level)
-- If using Supabase, verify database connection
+- Open browser DevTools and check for JavaScript errors
 
-### Supabase connection issues?
-- Check that `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are correctly set
-- Verify Supabase project is active and accessible
-- Check network tab in developer tools for failed API calls
-- Ensure `USE_SUPABASE=true` environment variable is set
+### Data not persisting across sessions?
+- **Check browser settings** - Ensure cookies/storage is not set to clear on exit
+- **Private browsing** - IndexedDB data is cleared when private windows close
+- **Storage quota** - Browser may evict data if storage is full
+- **Browser compatibility** - Use a modern browser (Chrome, Firefox, Safari, Edge)
+
+### How to backup/export data?
+- Use the **Markdown View** to copy all project data as text
+- Save the markdown content to a `.md` file for backup
+- Import by pasting markdown content back into the Markdown View
 
 ## Contributing
 
