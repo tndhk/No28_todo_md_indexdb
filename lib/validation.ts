@@ -166,7 +166,9 @@ export function validateTaskStatus(status: string): { valid: boolean; error?: st
         return { valid: false, error: 'Status is required' };
     }
 
-    if (!CLIENT_CONFIG.validStatuses.includes(status)) {
+    // Type-safe check for valid statuses
+    const validStatusArray: string[] = [...CLIENT_CONFIG.validStatuses];
+    if (!validStatusArray.includes(status)) {
         return { valid: false, error: `Invalid status. Must be one of: ${CLIENT_CONFIG.validStatuses.join(', ')}` };
     }
 
