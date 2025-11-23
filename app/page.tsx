@@ -141,24 +141,81 @@ export default function Home() {
     ? (hideDoneTasks ? filterDoneTasks(currentProject.tasks) : currentProject.tasks)
     : [];
 
+  // Helper function to move a task to the bottom of its sibling list
+  const moveTaskToBottom = useCallback((tasks: Task[], taskId: string): Task[] => {
+    // Helper to add task back at the bottom of its original level
+    const addTaskAtBottom = (list: Task[], targetId: string): Task[] => {
+      // Recursive map. If we find the list containing the task, reorder it.
+
+      const containsTask = list.some(t => t.id === targetId);
+      if (containsTask) {
+        const task = list.find(t => t.id === targetId)!;
+        const otherTasks = list.filter(t => t.id !== targetId);
+        return [...otherTasks, task];
+      }
+
+      return list.map(t => {
+        if (t.subtasks.length > 0) {
+          return { ...t, subtasks: addTaskAtBottom(t.subtasks, targetId) };
+        }
+        return t;
+      });
+    };
+
+    return addTaskAtBottom(tasks, taskId);
+  }, []);
+
   const handleTaskToggle = async (task: Task) => {
     if (!currentProjectId) return;
 
     const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
     const previousProjects = projects;
 
-    // Optimistic update - immediately update UI
-    updateCurrentProjectTasks(tasks => updateTaskInTree(tasks, task.id, { status: newStatus }));
+    // Optimistic update
+    updateCurrentProjectTasks(tasks => {
+      // First update status
+      let updatedTasks = updateTaskInTree(tasks, task.id, { status: newStatus });
+
+      // If marking as done, move to bottom
+      if (newStatus === 'done') {
+        updatedTasks = moveTaskToBottom(updatedTasks, task.id);
+      }
+
+      return updatedTasks;
+    });
 
     if (newStatus === 'done') {
       triggerConfetti();
     }
 
     try {
+      // 1. Update status
       const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
         status: newStatus,
       }, task.id);
-      setProjects(updatedProjects);
+
+      // 2. If marked as done, we also need to persist the new order
+      if (newStatus === 'done') {
+        // We need the *reordered* tasks from the current state to save them
+        // Since setProjects(updatedProjects) hasn't happened yet or is async,
+        // we should calculate the reordered list based on the updatedProjects result
+        // OR, simpler: use the optimistic state we just created.
+
+        // Let's get the latest project state from the optimistic update
+        // But wait, `updateCurrentProjectTasks` updates state, we can't access it immediately.
+        // We need to replicate the logic locally.
+
+        const project = updatedProjects.find(p => p.id === currentProjectId);
+        if (project) {
+          const reorderedTasks = moveTaskToBottom(project.tasks, task.id);
+          const finalProjects = await apiReorderTasks(currentProjectId, reorderedTasks);
+          setProjects(finalProjects);
+        } else {
+          setProjects(updatedProjects);
+        }
+      } else {
+        setProjects(updatedProjects);
+      }
     } catch (error) {
       // Rollback on error
       setProjects(previousProjects);
