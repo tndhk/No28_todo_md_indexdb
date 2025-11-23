@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
@@ -13,7 +11,6 @@ import AddTaskModal from '@/components/AddTaskModal';
 import CreateProjectModal from '@/components/CreateProjectModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import UserMenu from '@/components/UserMenu';
 import { triggerConfetti } from '@/lib/confetti';
 import {
   fetchProjects,
@@ -24,14 +21,12 @@ import {
   deleteTask as apiDeleteTask,
   reorderTasks as apiReorderTasks,
   getErrorMessage,
-} from '@/lib/api';
+} from '@/lib/api-indexeddb';
 import styles from './page.module.css';
 
 type ViewType = 'tree' | 'weekly' | 'md';
 
 export default function Home() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentView, setCurrentView] = useState<ViewType>('tree');
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>();
@@ -63,13 +58,6 @@ export default function Home() {
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
-
-  // Check authentication and redirect if not logged in
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    }
-  }, [status, router]);
 
   // Helper function to update task status recursively
   const updateTaskInTree = useCallback((tasks: Task[], taskId: string, updates: Partial<Task>): Task[] => {
@@ -168,7 +156,7 @@ export default function Home() {
     try {
       const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
         status: newStatus,
-      });
+      }, task.id);
       setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
@@ -187,7 +175,7 @@ export default function Home() {
     updateCurrentProjectTasks(tasks => deleteTaskFromTree(tasks, task.id));
 
     try {
-      const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber);
+      const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber, task.id);
       setProjects(updatedProjects);
       showToast('success', 'Task deleted successfully');
     } catch (error) {
@@ -212,7 +200,7 @@ export default function Home() {
         dueDate: updates.dueDate,
         status: updates.status,
         repeatFrequency: updates.repeatFrequency,
-      });
+      }, task.id);
       setProjects(updatedProjects);
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -248,8 +236,9 @@ export default function Home() {
         content,
         status,
         dueDate,
-        modalParentTask?.lineNumber,
-        repeatFrequency
+        undefined, // parentLineNumber (not used in IndexedDB mode)
+        repeatFrequency,
+        modalParentTask?.id // parentId for IndexedDB mode
       );
       setProjects(updatedProjects);
       showToast('success', 'Task added successfully');
@@ -293,18 +282,13 @@ export default function Home() {
     }
   };
 
-  // Show loading state while checking authentication
-  if (status === 'loading' || loading) {
+  // Show loading state
+  if (loading) {
     return (
       <main className={styles.loading}>
         <h1 className="animate-fade-in">Loading your workspace...</h1>
       </main>
     );
-  }
-
-  // Redirect if not authenticated (safety check)
-  if (!session) {
-    return null;
   }
 
   return (
@@ -336,7 +320,6 @@ export default function Home() {
                 {hideDoneTasks ? <EyeOff size={18} /> : <Eye size={18} />}
                 <span>{hideDoneTasks ? 'Show Done' : 'Hide Done'}</span>
               </button>
-              <UserMenu />
             </div>
           </header>
 
