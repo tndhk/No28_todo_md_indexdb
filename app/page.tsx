@@ -51,7 +51,8 @@ export default function Home() {
   }, [hideDoneTasks]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
+    const id = `${Date.now()}-${crypto.randomUUID()}`;
     setToasts((prev) => [...prev, { id, type, message }]);
   }, []);
 

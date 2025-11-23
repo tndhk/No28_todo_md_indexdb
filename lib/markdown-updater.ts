@@ -6,14 +6,29 @@ import {
     DUE_DATE_PATTERN,
     REPEAT_FREQUENCY_PATTERN,
 } from './constants';
+import {
+    validateFilePath,
+    validateFileExists,
+} from './security';
 
 /**
  * Updates multiple tasks in a markdown file based on their line numbers
  * @param filePath - Path to the markdown file
  * @param tasks - Array of tasks with updated data
  * @optimization Only update lines that changed to reduce memory allocation
+ * @security Validates file path to prevent path traversal attacks
  */
 export function updateMarkdown(filePath: string, tasks: Task[]): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
+    const fileValidation = validateFileExists(filePath);
+    if (!fileValidation.valid) {
+        throw new Error(fileValidation.error || 'File validation failed');
+    }
+
     const config = getConfig();
     const content = fs.readFileSync(filePath, config.fileEncoding);
     const lines = content.split('\n');
@@ -52,12 +67,23 @@ export function updateMarkdown(filePath: string, tasks: Task[]): void {
  * @param lineNumber - Line number of the task (1-indexed)
  * @param updates - Partial updates to apply (content, status, dueDate, repeatFrequency)
  * @throws {Error} If the line number is invalid or the line is not a task
+ * @security Validates file path and task content to prevent attacks
  */
 export function updateTask(
     filePath: string,
     lineNumber: number,
     updates: { content?: string; status?: TaskStatus; dueDate?: string; repeatFrequency?: RepeatFrequency }
 ): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
+    const fileValidation = validateFileExists(filePath);
+    if (!fileValidation.valid) {
+        throw new Error(fileValidation.error || 'File validation failed');
+    }
+
     const config = getConfig();
     const content = fs.readFileSync(filePath, config.fileEncoding);
     const lines = content.split('\n');
@@ -198,6 +224,7 @@ function getSectionName(status: TaskStatus): string {
  * @param parentLineNumber - Optional parent task line number (for subtasks)
  * @param repeatFrequency - Optional repeat frequency for recurring tasks
  * @throws {Error} If the file cannot be read or written
+ * @security Validates file path and content to prevent attacks
  */
 export function addTask(
     filePath: string,
@@ -207,6 +234,16 @@ export function addTask(
     parentLineNumber?: number,
     repeatFrequency?: RepeatFrequency
 ): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
+    const fileValidation = validateFileExists(filePath);
+    if (!fileValidation.valid) {
+        throw new Error(fileValidation.error || 'File validation failed');
+    }
+
     const config = getConfig();
     const fileContent = fs.readFileSync(filePath, config.fileEncoding);
     const lines = fileContent.split('\n');
@@ -243,8 +280,19 @@ export function addTask(
  * @param filePath - Path to the markdown file
  * @param lineNumber - Line number of the task to delete (1-indexed)
  * @optimization Improved from O(n²) to O(n) by using filter instead of multiple splice operations
+ * @security Validates file path to prevent path traversal attacks
  */
 export function deleteTask(filePath: string, lineNumber: number): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
+    const fileValidation = validateFileExists(filePath);
+    if (!fileValidation.valid) {
+        throw new Error(fileValidation.error || 'File validation failed');
+    }
+
     const config = getConfig();
     const content = fs.readFileSync(filePath, config.fileEncoding);
     const lines = content.split('\n');
@@ -278,8 +326,14 @@ export function deleteTask(filePath: string, lineNumber: number): void {
  * Used for major reorganizations like reordering or bulk updates
  * @param filePath - Path to the markdown file
  * @param project - Complete project data to write
+ * @security Validates file path to prevent path traversal attacks
  */
 export function rewriteMarkdown(filePath: string, project: Project): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
     const config = getConfig();
     const lines: string[] = [];
 
@@ -396,8 +450,14 @@ export function handleRecurringTask(
  * Creates a new project file with the given title
  * @param filePath - Path to the new markdown file
  * @param title - Project title
+ * @security Validates file path to prevent path traversal attacks
  */
 export function createProjectFile(filePath: string, title: string): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
     const config = getConfig();
 
     // Create initial markdown content with just the title
@@ -410,8 +470,19 @@ export function createProjectFile(filePath: string, title: string): void {
  * Updates the project title (H1) in a markdown file
  * @param filePath - Path to the markdown file
  * @param newTitle - New project title
+ * @security Validates file path to prevent path traversal attacks
  */
 export function updateProjectTitle(filePath: string, newTitle: string): void {
+    // SECURITY: Validate file path before any file operations
+    if (!validateFilePath(filePath)) {
+        throw new Error('Invalid file path: Path traversal detected');
+    }
+
+    const fileValidation = validateFileExists(filePath);
+    if (!fileValidation.valid) {
+        throw new Error(fileValidation.error || 'File validation failed');
+    }
+
     const config = getConfig();
 
     // Read current content
