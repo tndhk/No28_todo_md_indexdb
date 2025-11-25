@@ -169,10 +169,20 @@ export default function Home() {
     return tasks;
   }, [currentProject]);
 
-  // Filter tasks based on hideDoneTasks state
+  // Filter tasks based on hideDoneTasks state for Calendar view
   const displayTasks = useMemo(() => {
     return hideDoneTasks ? filterDoneTasks(allProjectTasks) : allProjectTasks;
   }, [allProjectTasks, hideDoneTasks]);
+
+  // Filter groups based on hideDoneTasks state for Tree view
+  const displayGroups = useMemo(() => {
+    if (!currentProject) return [];
+
+    return currentProject.groups.map(group => ({
+      ...group,
+      tasks: hideDoneTasks ? filterDoneTasks(group.tasks) : group.tasks,
+    }));
+  }, [currentProject, hideDoneTasks, filterDoneTasks]);
 
   // Helper function to move a task to the bottom of its sibling list
   const moveTaskToBottom = useCallback((tasks: Task[], taskId: string): Task[] => {
@@ -623,9 +633,9 @@ export default function Home() {
 
           <div className={styles.content}>
             <ErrorBoundary>
-              {currentView === 'tree' && currentProject && (
+              {currentView === 'tree' && currentProject && displayGroups && (
                 <TreeView
-                  groups={currentProject.groups}
+                  groups={displayGroups}
                   onTaskToggle={handleTaskToggle}
                   onTaskDelete={handleTaskDelete}
                   onTaskAdd={handleTaskAdd}
