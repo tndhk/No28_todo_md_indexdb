@@ -149,7 +149,19 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         if (!over) return;
 
         const taskId = active.id as string;
-        const newDate = over.id as string;
+        let newDate = over.id as string;
+
+        // If dropped on a task, get that task's due date
+        // useSortable makes items droppable, so over.id might be a task ID
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+            const overTask = taskMap.get(newDate);
+            if (overTask && overTask.dueDate) {
+                newDate = overTask.dueDate;
+            } else {
+                // Invalid drop target
+                return;
+            }
+        }
 
         // Find the task using map - O(1) instead of O(n)
         const task = taskMap.get(taskId);
