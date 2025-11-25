@@ -352,11 +352,13 @@ function serializeProjectToMarkdown(project: Project): string {
     }
 
     // For each group
-    project.groups.forEach(group => {
+    project.groups.forEach((group, index) => {
         lines.push(`### ${group.name}`);
-        lines.push('');
         writeTasks(group.tasks);
-        lines.push('');
+        // Add blank line between groups, but not after the last group
+        if (index < project.groups.length - 1) {
+            lines.push('');
+        }
     });
 
     return lines.join('\n');
