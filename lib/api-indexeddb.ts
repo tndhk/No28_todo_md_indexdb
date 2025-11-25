@@ -554,6 +554,42 @@ export async function deleteGroup(projectId: string, groupId: string): Promise<P
 }
 
 /**
+ * Move a task to a different parent task within the same group
+ */
+export async function moveTaskToParent(
+    projectId: string,
+    groupId: string,
+    taskId: string,
+    newParentId: string | null
+): Promise<Project[]> {
+    try {
+        await idb.moveTaskToParent(projectId, groupId, taskId, newParentId);
+        return await idb.getAllProjects();
+    } catch (error) {
+        console.error('Failed to move task to parent:', error);
+        throw new ApiError('Failed to move task to parent', 500);
+    }
+}
+
+/**
+ * Move a task to a different group
+ */
+export async function moveTaskToGroup(
+    projectId: string,
+    fromGroupId: string,
+    toGroupId: string,
+    taskId: string
+): Promise<Project[]> {
+    try {
+        await idb.moveTaskToGroup(projectId, fromGroupId, toGroupId, taskId);
+        return await idb.getAllProjects();
+    } catch (error) {
+        console.error('Failed to move task to group:', error);
+        throw new ApiError('Failed to move task to group', 500);
+    }
+}
+
+/**
  * Get a user-friendly error message
  */
 export function getErrorMessage(error: unknown): string {
