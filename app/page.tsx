@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Search, X } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
+import { useDebounce } from '@/lib/hooks';
+import { updateTaskInTree, deleteTaskFromTree, filterDoneTasks, filterTasksBySearch } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
@@ -42,6 +44,8 @@ export default function Home() {
   const [modalGroupId, setModalGroupId] = useState<string | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [hideDoneTasks, setHideDoneTasks] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Load hideDoneTasks from localStorage on mount
   useEffect(() => {
@@ -64,51 +68,6 @@ export default function Home() {
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
-  // Helper function to update task status recursively
-  const updateTaskInTree = useCallback((tasks: Task[], taskId: string, updates: Partial<Task>): Task[] => {
-    return tasks.map(task => {
-      if (task.id === taskId) {
-        return { ...task, ...updates };
-      }
-      if (task.subtasks.length > 0) {
-        return { ...task, subtasks: updateTaskInTree(task.subtasks, taskId, updates) };
-      }
-      return task;
-    });
-  }, []);
-
-  // Helper function to delete task from tree recursively
-  const deleteTaskFromTree = useCallback((tasks: Task[], taskId: string): Task[] => {
-    return tasks
-      .filter(task => task.id !== taskId)
-      .map(task => {
-        if (task.subtasks.length > 0) {
-          return { ...task, subtasks: deleteTaskFromTree(task.subtasks, taskId) };
-        }
-        return task;
-      });
-  }, []);
-
-  // Helper function to filter out done tasks recursively
-  const filterDoneTasks = useCallback((tasks: Task[]): Task[] => {
-    return tasks
-      .map(task => {
-        // First, recursively filter subtasks
-        if (task.subtasks.length > 0) {
-          const filteredSubtasks = filterDoneTasks(task.subtasks);
-          return { ...task, subtasks: filteredSubtasks };
-        }
-        return task;
-      })
-      .filter(task => {
-        // Filter out done tasks that have no remaining subtasks
-        if (task.status === 'done' && task.subtasks.length === 0) {
-          return false;
-        }
-        return true;
-      });
   }, []);
 
   // Helper function to update current group's tasks
@@ -170,20 +129,39 @@ export default function Home() {
     return tasks;
   }, [currentProject]);
 
-  // Filter tasks based on hideDoneTasks state for Calendar view
+  // Filter tasks based on hideDoneTasks and search query
   const displayTasks = useMemo(() => {
-    return hideDoneTasks ? filterDoneTasks(allProjectTasks) : allProjectTasks;
-  }, [allProjectTasks, hideDoneTasks, filterDoneTasks]);
+    let tasks = allProjectTasks;
+    
+    if (hideDoneTasks) {
+      tasks = filterDoneTasks(tasks);
+    }
+    
+    if (debouncedSearchQuery) {
+      tasks = filterTasksBySearch(tasks, debouncedSearchQuery);
+    }
+    
+    return tasks;
+  }, [allProjectTasks, hideDoneTasks, debouncedSearchQuery]);
 
-  // Filter groups based on hideDoneTasks state for Tree view
+  // Filter groups based on hideDoneTasks and search query
   const displayGroups = useMemo(() => {
     if (!currentProject) return [];
 
-    return currentProject.groups.map(group => ({
-      ...group,
-      tasks: hideDoneTasks ? filterDoneTasks(group.tasks) : group.tasks,
-    }));
-  }, [currentProject, hideDoneTasks, filterDoneTasks]);
+    return currentProject.groups.map(group => {
+      let tasks = group.tasks;
+      
+      if (hideDoneTasks) {
+        tasks = filterDoneTasks(tasks);
+      }
+      
+      if (debouncedSearchQuery) {
+        tasks = filterTasksBySearch(tasks, debouncedSearchQuery);
+      }
+      
+      return { ...group, tasks };
+    });
+  }, [currentProject, hideDoneTasks, debouncedSearchQuery]);
 
   // Helper function to move a task to the bottom of its sibling list
   const moveTaskToBottom = useCallback((tasks: Task[], taskId: string): Task[] => {
@@ -209,24 +187,34 @@ export default function Home() {
     return addTaskAtBottom(tasks, taskId);
   }, []);
 
-  const handleTaskToggle = async (task: Task) => {
-    if (!currentProjectId || !currentGroupId) return;
+  const handleTaskToggle = async (task: Task, groupId: string) => {
+    if (!currentProjectId) return;
 
     const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
     const previousProjects = projects;
 
     // Optimistic update
-    updateCurrentGroupTasks(tasks => {
-      // First update status
-      let updatedTasks = updateTaskInTree(tasks, task.id, { status: newStatus });
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === groupId) {
+              // First update status
+              let updatedTasks = updateTaskInTree(group.tasks, task.id, { status: newStatus });
 
-      // If marking as done, move to bottom
-      if (newStatus === 'done') {
-        updatedTasks = moveTaskToBottom(updatedTasks, task.id);
+              // If marking as done, move to bottom
+              if (newStatus === 'done') {
+                updatedTasks = moveTaskToBottom(updatedTasks, task.id);
+              }
+              return { ...group, tasks: updatedTasks };
+            }
+            return group;
+          }),
+        };
       }
-
-      return updatedTasks;
-    });
+      return project;
+    }));
 
     if (newStatus === 'done') {
       triggerConfetti();
@@ -241,20 +229,13 @@ export default function Home() {
       // 2. If marked as done, we also need to persist the new order
       if (newStatus === 'done') {
         // We need the *reordered* tasks from the current state to save them
-        // Since setProjects(updatedProjects) hasn't happened yet or is async,
-        // we should calculate the reordered list based on the updatedProjects result
-        // OR, simpler: use the optimistic state we just created.
-
-        // Let's get the latest project state from the optimistic update
-        // But wait, `updateCurrentGroupTasks` updates state, we can't access it immediately.
-        // We need to replicate the logic locally.
-
+        // We can replicate the logic locally using the updated project data
         const project = updatedProjects.find(p => p.id === currentProjectId);
         if (project) {
-          const group = project.groups.find(g => g.id === currentGroupId);
+          const group = project.groups.find(g => g.id === groupId);
           if (group) {
             const reorderedTasks = moveTaskToBottom(group.tasks, task.id);
-            const finalProjects = await apiReorderTasks(currentProjectId, currentGroupId, reorderedTasks);
+            const finalProjects = await apiReorderTasks(currentProjectId, groupId, reorderedTasks);
             setProjects(finalProjects);
           } else {
             setProjects(updatedProjects);
@@ -273,13 +254,26 @@ export default function Home() {
     }
   };
 
-  const handleTaskDelete = async (task: Task) => {
+  const handleTaskDelete = async (task: Task, groupId: string) => {
     if (!currentProjectId || !confirm('Are you sure you want to delete this task?')) return;
 
     const previousProjects = projects;
 
     // Optimistic update - immediately remove from UI
-    updateCurrentGroupTasks(tasks => deleteTaskFromTree(tasks, task.id));
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === groupId) {
+              return { ...group, tasks: deleteTaskFromTree(group.tasks, task.id) };
+            }
+            return group;
+          }),
+        };
+      }
+      return project;
+    }));
 
     try {
       const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber, task.id);
@@ -633,6 +627,25 @@ export default function Home() {
               {currentProject?.title || 'Select a project'}
             </h1>
             <div className={styles.headerActions}>
+              <div className={styles.searchContainer}>
+                <Search size={16} className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={styles.searchInput}
+                />
+                {searchQuery && (
+                  <button
+                    className={styles.clearSearchButton}
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
               <button
                 className={styles.toggleButton}
                 onClick={() => setHideDoneTasks(!hideDoneTasks)}
@@ -647,18 +660,32 @@ export default function Home() {
           <div className={styles.content}>
             <ErrorBoundary>
               {currentView === 'tree' && currentProject && displayGroups && (
-                <TreeView
-                  groups={displayGroups}
-                  onTaskToggle={handleTaskToggle}
-                  onTaskDelete={handleTaskDelete}
-                  onTaskAdd={handleTaskAdd}
-                  onTaskUpdate={handleTaskUpdate}
-                  onTaskReorder={handleTaskReorder}
-                  onTaskMoveToParent={handleTaskMoveToParent}
-                  onTaskMoveToGroup={handleTaskMoveToGroup}
-                  onGroupRename={handleGroupRename}
-                  onGroupDelete={handleGroupDelete}
-                />
+                debouncedSearchQuery && !displayGroups.some(g => g.tasks.length > 0) ? (
+                  <div className={styles.noResults}>
+                    <Search size={48} className={styles.noResultsIcon} />
+                    <p>No tasks found for &quot;{debouncedSearchQuery}&quot;</p>
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className={styles.clearSearchButtonLarge}
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                ) : (
+                  <TreeView
+                    key={debouncedSearchQuery || 'tree-view'}
+                    groups={displayGroups}
+                    onTaskToggle={handleTaskToggle}
+                    onTaskDelete={handleTaskDelete}
+                    onTaskAdd={handleTaskAdd}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskReorder={handleTaskReorder}
+                    onTaskMoveToParent={handleTaskMoveToParent}
+                    onTaskMoveToGroup={handleTaskMoveToGroup}
+                    onGroupRename={handleGroupRename}
+                    onGroupDelete={handleGroupDelete}
+                  />
+                )
               )}
               {currentView === 'weekly' && currentProject && (
                 <WeeklyView
