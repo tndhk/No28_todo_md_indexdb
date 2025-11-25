@@ -355,29 +355,8 @@ function serializeProjectToMarkdown(project: Project): string {
     project.groups.forEach(group => {
         lines.push(`### ${group.name}`);
         lines.push('');
-
-        // Group tasks by status
-        const todoTasks = group.tasks.filter(t => t.status === 'todo');
-        const doingTasks = group.tasks.filter(t => t.status === 'doing');
-        const doneTasks = group.tasks.filter(t => t.status === 'done');
-
-        if (todoTasks.length > 0) {
-            lines.push('#### Todo');
-            writeTasks(todoTasks);
-            lines.push('');
-        }
-
-        if (doingTasks.length > 0) {
-            lines.push('#### Doing');
-            writeTasks(doingTasks);
-            lines.push('');
-        }
-
-        if (doneTasks.length > 0) {
-            lines.push('#### Done');
-            writeTasks(doneTasks);
-            lines.push('');
-        }
+        writeTasks(group.tasks);
+        lines.push('');
     });
 
     return lines.join('\n');
@@ -392,7 +371,6 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
     let title = projectId;
     const groups: Group[] = [];
     let currentGroup: Group | null = null;
-    let currentSection: TaskStatus = 'todo';
     const taskStack: { task: Task; indent: number }[] = [];
     let hasExplicitGroups = false;
 
@@ -427,21 +405,9 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             groups.push(currentGroup);
         }
 
-        // Parse Status Sections (####)
-        if (line.startsWith('#### ')) {
-            const sectionName = line.substring(5).trim().toLowerCase();
-            if (sectionName.includes('todo')) currentSection = 'todo';
-            else if (sectionName.includes('doing')) currentSection = 'doing';
-            else if (sectionName.includes('done')) currentSection = 'done';
-            return;
-        }
-
-        // Also support old format (##) for backwards compatibility
-        if (line.startsWith('## ')) {
-            const sectionName = line.substring(3).trim().toLowerCase();
-            if (sectionName.includes('todo')) currentSection = 'todo';
-            else if (sectionName.includes('doing')) currentSection = 'doing';
-            else if (sectionName.includes('done')) currentSection = 'done';
+        // Ignore old status section headers (#### Todo, Done, etc.) for backwards compatibility
+        // Status is now determined by the checkbox state only
+        if (line.startsWith('#### ') || line.startsWith('## ')) {
             return;
         }
 
@@ -478,7 +444,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() and substring() instead of Math.random() and substr()
                 id: `${projectId}-${Date.now()}-${crypto.randomUUID()}`,
                 content: taskContent,
-                status: isChecked ? 'done' : currentSection,
+                status: isChecked ? 'done' : 'todo',
                 dueDate,
                 repeatFrequency,
                 subtasks: [],
