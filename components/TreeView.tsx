@@ -11,8 +11,8 @@ import styles from './TreeView.module.css';
 
 interface TreeViewProps {
     groups: Group[];
-    onTaskToggle: (task: Task) => void;
-    onTaskDelete: (task: Task) => void;
+    onTaskToggle: (task: Task, groupId: string) => void;
+    onTaskDelete: (task: Task, groupId: string) => void;
     onTaskAdd: (parentTask?: Task, groupId?: string) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onTaskReorder?: (groupId: string, tasks: Task[]) => void;
@@ -306,8 +306,8 @@ function GroupItem({
     onGroupDelete,
 }: {
     group: Group;
-    onTaskToggle: (task: Task) => void;
-    onTaskDelete: (task: Task) => void;
+    onTaskToggle: (task: Task, groupId: string) => void;
+    onTaskDelete: (task: Task, groupId: string) => void;
     onTaskAdd: (parentTask?: Task, groupId?: string) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onGroupRename?: (newName: string) => void;
@@ -408,8 +408,8 @@ function GroupItem({
                     <TaskItem
                         key={task.id}
                         task={task}
-                        onTaskToggle={onTaskToggle}
-                        onTaskDelete={onTaskDelete}
+                        onTaskToggle={(t) => onTaskToggle(t, group.id)}
+                        onTaskDelete={(t) => onTaskDelete(t, group.id)}
                         onTaskAdd={(parentTask) => onTaskAdd(parentTask, group.id)}
                         onTaskUpdate={onTaskUpdate}
                     />

@@ -85,12 +85,24 @@ Markdownパース機能(インポート/エクスポート用):
 - `parseMarkdown()` - Markdownテキストをタスク/プロジェクト構造にパース
 - Markdown Viewのインポート機能で使用
 
+#### [lib/utils.ts](lib/utils.ts)
+汎用ユーティリティ関数を提供:
+- `filterTasksBySearch()` - タスクの再帰的検索フィルタリング
+- `filterDoneTasks()` - 完了タスクのフィルタリング
+- `updateTaskInTree()` - タスクツリーの再帰的更新
+- `deleteTaskFromTree()` - タスクツリーからの再帰的削除
+
+#### [lib/hooks.ts](lib/hooks.ts)
+カスタムReactフックを提供:
+- `useDebounce()` - 値の変更を遅延させるフック(検索バーなどで使用)
+
 ### UIコンポーネント
 
 #### [app/page.tsx](app/page.tsx)
 メインコンテナ:
 - プロジェクトと現在のビュー状態を管理
 - タスクの変更操作を調整(トグル、削除、追加、更新)
+- 検索機能とフィルタリング(完了済み非表示)を実装
 - `lib/api-indexeddb.ts`を使用してIndexedDBと通信
 
 #### [components/TreeView.tsx](components/TreeView.tsx)
