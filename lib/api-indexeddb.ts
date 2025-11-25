@@ -353,8 +353,15 @@ function serializeProjectToMarkdown(project: Project): string {
 
     // For each group
     project.groups.forEach((group, index) => {
-        lines.push(`### ${group.name}`);
+        // Skip group header if it's the only "Default" group
+        const isOnlyDefaultGroup = project.groups.length === 1 && group.name === 'Default';
+
+        if (!isOnlyDefaultGroup) {
+            lines.push(`### ${group.name}`);
+        }
+
         writeTasks(group.tasks);
+
         // Add blank line between groups, but not after the last group
         if (index < project.groups.length - 1) {
             lines.push('');
