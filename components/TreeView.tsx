@@ -6,6 +6,7 @@ import { useState, useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './TreeView.module.css';
 
 interface TreeViewProps {
@@ -159,7 +160,7 @@ function TaskItem({
                             className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}
                             onDoubleClick={() => setIsEditing(true)}
                         >
-                            {task.content}
+                            {renderMarkdownLinks(task.content)}
                         </span>
 
                         {task.dueDate && (

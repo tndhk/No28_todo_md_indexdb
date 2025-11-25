@@ -6,6 +6,7 @@ import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSe
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './WeeklyView.module.css';
 
 interface WeeklyViewProps {
@@ -52,7 +53,7 @@ function DraggableTask({ task }: { task: Task }) {
                 <div className={styles.parentContent}>{task.parentContent}</div>
             )}
             <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
-                {task.content}
+                {renderMarkdownLinks(task.content)}
                 {task.repeatFrequency && (
                     <span className={styles.repeatBadge}>
                         🔁 {task.repeatFrequency}
@@ -232,7 +233,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                             <div className={styles.parentContent}>{draggedTask.parentContent}</div>
                         )}
                         <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
-                            {draggedTask.content}
+                            {renderMarkdownLinks(draggedTask.content)}
                             {draggedTask.repeatFrequency && (
                                 <span className={styles.repeatBadge}>
                                     🔁 {draggedTask.repeatFrequency}
