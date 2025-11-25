@@ -3,7 +3,7 @@
 import { Task, RepeatFrequency, Group } from '@/lib/types';
 import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay, defaultDropAnimationSideEffects, DropAnimation } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
@@ -30,78 +30,75 @@ interface TaskContext {
     taskIndex: number;
 }
 
-function TaskItem({
+// Separated visual component for TaskItem to be used in DragOverlay
+function TaskItemContent({
     task,
+    isExpanded,
+    onToggleExpand,
+    isEditing,
+    onEditStart,
+    onEditEnd,
+    onEditCancel,
+    editContent,
+    setEditContent,
+    editDueDate,
+    setEditDueDate,
+    editRepeatFrequency,
+    setEditRepeatFrequency,
     onTaskToggle,
     onTaskDelete,
     onTaskAdd,
-    onTaskUpdate
+    dragHandleProps,
+    style,
+    innerRef,
+    isOverlay = false,
 }: {
     task: Task;
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+    isEditing: boolean;
+    onEditStart: () => void;
+    onEditEnd: () => void;
+    onEditCancel: () => void;
+    editContent: string;
+    setEditContent: (val: string) => void;
+    editDueDate: string;
+    setEditDueDate: (val: string) => void;
+    editRepeatFrequency: string;
+    setEditRepeatFrequency: (val: string) => void;
     onTaskToggle: (task: Task) => void;
     onTaskDelete: (task: Task) => void;
     onTaskAdd: (parentTask?: Task) => void;
-    onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
+    dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+    style?: React.CSSProperties;
+    innerRef?: React.Ref<HTMLDivElement>;
+    isOverlay?: boolean;
 }) {
-    const [isExpanded, setIsExpanded] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editContent, setEditContent] = useState(task.content);
-    const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
-    const [editRepeatFrequency, setEditRepeatFrequency] = useState(task.repeatFrequency || '');
     const hasSubtasks = task.subtasks.length > 0;
-
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: task.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    const handleSave = () => {
-        if (editContent.trim()) {
-            onTaskUpdate(task, {
-                content: editContent,
-                dueDate: editDueDate || undefined,
-                repeatFrequency: editRepeatFrequency ? (editRepeatFrequency as RepeatFrequency) : undefined,
-            });
-            setIsEditing(false);
-        }
-    };
-
-    const handleCancel = () => {
-        setEditContent(task.content);
-        setEditDueDate(task.dueDate || '');
-        setEditRepeatFrequency(task.repeatFrequency || '');
-        setIsEditing(false);
-    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSave();
+            onEditEnd();
         } else if (e.key === 'Escape') {
-            handleCancel();
+            onEditCancel();
         }
     };
 
     return (
-        <div ref={setNodeRef} style={style} className={styles.taskItem}>
+        <div
+            ref={innerRef}
+            style={style}
+            className={`${styles.taskItem} ${isOverlay ? styles.dragOverlay : ''}`}
+        >
             <div className={styles.taskRow}>
-                <div {...attributes} {...listeners} className={styles.dragHandle}>
+                <div {...dragHandleProps} className={styles.dragHandle}>
                     <GripVertical size={14} />
                 </div>
                 {hasSubtasks && (
                     <button
                         className={styles.expandButton}
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        onClick={onToggleExpand}
                     >
                         {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
@@ -124,7 +121,7 @@ function TaskItem({
                         className={styles.editContainer}
                         onBlur={(e) => {
                             if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                                handleSave();
+                                onEditEnd();
                             }
                         }}
                     >
@@ -158,7 +155,7 @@ function TaskItem({
                     <>
                         <span
                             className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}
-                            onDoubleClick={() => setIsEditing(true)}
+                            onDoubleClick={onEditStart}
                         >
                             {renderMarkdownLinks(task.content)}
                         </span>
@@ -178,7 +175,7 @@ function TaskItem({
                         <div className={styles.actions}>
                             <button
                                 className={styles.actionButton}
-                                onClick={() => setIsEditing(true)}
+                                onClick={onEditStart}
                                 title="Edit task"
                             >
                                 <Edit2 size={16} />
@@ -201,8 +198,87 @@ function TaskItem({
                     </>
                 )}
             </div>
+        </div>
+    );
+}
 
-            {hasSubtasks && isExpanded && (
+function TaskItem({
+    task,
+    onTaskToggle,
+    onTaskDelete,
+    onTaskAdd,
+    onTaskUpdate
+}: {
+    task: Task;
+    onTaskToggle: (task: Task) => void;
+    onTaskDelete: (task: Task) => void;
+    onTaskAdd: (parentTask?: Task) => void;
+    onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
+}) {
+    const [isExpanded, setIsExpanded] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(task.content);
+    const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
+    const [editRepeatFrequency, setEditRepeatFrequency] = useState(task.repeatFrequency || '');
+
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: task.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+    };
+
+    const handleSave = () => {
+        if (editContent.trim()) {
+            onTaskUpdate(task, {
+                content: editContent,
+                dueDate: editDueDate || undefined,
+                repeatFrequency: editRepeatFrequency ? (editRepeatFrequency as RepeatFrequency) : undefined,
+            });
+            setIsEditing(false);
+        }
+    };
+
+    const handleCancel = () => {
+        setEditContent(task.content);
+        setEditDueDate(task.dueDate || '');
+        setEditRepeatFrequency(task.repeatFrequency || '');
+        setIsEditing(false);
+    };
+
+    return (
+        <>
+            <TaskItemContent
+                task={task}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setIsExpanded(!isExpanded)}
+                isEditing={isEditing}
+                onEditStart={() => setIsEditing(true)}
+                onEditEnd={handleSave}
+                onEditCancel={handleCancel}
+                editContent={editContent}
+                setEditContent={setEditContent}
+                editDueDate={editDueDate}
+                setEditDueDate={setEditDueDate}
+                editRepeatFrequency={editRepeatFrequency}
+                setEditRepeatFrequency={setEditRepeatFrequency}
+                onTaskToggle={onTaskToggle}
+                onTaskDelete={onTaskDelete}
+                onTaskAdd={onTaskAdd}
+                dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLDivElement>}
+                style={style}
+                innerRef={setNodeRef}
+            />
+
+            {task.subtasks.length > 0 && isExpanded && (
                 <div className={styles.subtasks}>
                     {task.subtasks.map((subtask) => (
                         <TaskItem
@@ -216,7 +292,7 @@ function TaskItem({
                     ))}
                 </div>
             )}
-        </div>
+        </>
     );
 }
 
@@ -334,7 +410,7 @@ function GroupItem({
                         task={task}
                         onTaskToggle={onTaskToggle}
                         onTaskDelete={onTaskDelete}
-                        onTaskAdd={onTaskAdd}
+                        onTaskAdd={(parentTask) => onTaskAdd(parentTask, group.id)}
                         onTaskUpdate={onTaskUpdate}
                     />
                 ))}
@@ -356,12 +432,33 @@ export default function TreeView({
     onGroupDelete,
     onGroupAdd,
 }: TreeViewProps) {
+    const [activeTask, setActiveTask] = useState<Task | null>(null);
+
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    // Build map of all tasks for easy lookup
+    const taskMap = useMemo(() => {
+        const map = new Map<string, Task>();
+        const collectTasks = (tasks: Task[]) => {
+            tasks.forEach(task => {
+                map.set(task.id, task);
+                if (task.subtasks.length > 0) {
+                    collectTasks(task.subtasks);
+                }
+            });
+        };
+        groups.forEach(group => collectTasks(group.tasks));
+        return map;
+    }, [groups]);
 
     // Build flat list of all task IDs and their context
     const taskContextMap = useMemo(() => {
@@ -387,10 +484,6 @@ export default function TreeView({
 
         return map;
     }, [groups]);
-
-    // const allTaskIds = useMemo(() => {
-    //     return Array.from(taskContextMap.keys());
-    // }, [taskContextMap]);
 
     // Helper to find a task and its parent
     const findTaskAndParent = (taskId: string, groupId: string): { task: Task | null; parent: Task | null; parentTasks: Task[] | null } => {
@@ -422,12 +515,18 @@ export default function TreeView({
         return { task: foundTask, parent: foundParent, parentTasks };
     };
 
-    const handleDragStart = (_event: DragStartEvent) => {
-        // Can add visual feedback here if needed
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event;
+        const task = taskMap.get(active.id as string);
+        if (task) {
+            setActiveTask(task);
+        }
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
+
+        setActiveTask(null);
 
         if (!over || active.id === over.id) return;
 
@@ -471,6 +570,16 @@ export default function TreeView({
         }
     };
 
+    const dropAnimation: DropAnimation = {
+        sideEffects: defaultDropAnimationSideEffects({
+            styles: {
+                active: {
+                    opacity: '0.3',
+                },
+            },
+        }),
+    };
+
     return (
         <DndContext
             sensors={sensors}
@@ -505,6 +614,30 @@ export default function TreeView({
                     ))}
                 </div>
             </div>
+
+            <DragOverlay dropAnimation={dropAnimation}>
+                {activeTask ? (
+                    <TaskItemContent
+                        task={activeTask}
+                        isExpanded={true}
+                        onToggleExpand={() => { }}
+                        isEditing={false}
+                        onEditStart={() => { }}
+                        onEditEnd={() => { }}
+                        onEditCancel={() => { }}
+                        editContent={activeTask.content}
+                        setEditContent={() => { }}
+                        editDueDate={activeTask.dueDate || ''}
+                        setEditDueDate={() => { }}
+                        editRepeatFrequency={activeTask.repeatFrequency || ''}
+                        setEditRepeatFrequency={() => { }}
+                        onTaskToggle={() => { }}
+                        onTaskDelete={() => { }}
+                        onTaskAdd={() => { }}
+                        isOverlay={true}
+                    />
+                ) : null}
+            </DragOverlay>
         </DndContext>
     );
 }

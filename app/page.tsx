@@ -413,7 +413,8 @@ export default function Home() {
 
     // Optimistic update
     updateCurrentGroupTasks(tasks => {
-      const newTasks = tasks;
+      // Deep copy to avoid mutating state directly
+      const newTasks = JSON.parse(JSON.stringify(tasks));
 
       // Find and remove task from current location
       const findAndRemove = (tasksToSearch: Task[]): Task | null => {
@@ -431,7 +432,7 @@ export default function Home() {
       };
 
       const movedTask = findAndRemove(newTasks);
-      if (!movedTask) return newTasks;
+      if (!movedTask) return tasks; // Return original if not found
 
       // Add to new parent or root
       if (newParentId) {
@@ -496,8 +497,12 @@ export default function Home() {
     setProjects(prev => prev.map(project => {
       if (project.id === currentProjectId) {
         const newGroups = project.groups.map(group => {
-          if (group.id === fromGroupId) {
-            return { ...group, tasks: [...group.tasks] };
+          // We need to copy both source and target groups to avoid mutation
+          if (group.id === fromGroupId || group.id === toGroupId) {
+            // Deep copy tasks to ensure we don't mutate nested structures if findAndRemoveTask goes deep
+            // Although findAndRemoveTask only splices the array it's given.
+            // For safety, let's deep copy the tasks array of the affected groups.
+            return { ...group, tasks: JSON.parse(JSON.stringify(group.tasks)) };
           }
           return group;
         });

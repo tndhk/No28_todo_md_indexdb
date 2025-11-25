@@ -353,3 +353,14 @@
     color: var(--primary);
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
 }
+
+.dragOverlay {
+    opacity: 0.9;
+    transform: scale(1.02);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+    cursor: grabbing;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--primary);
+    z-index: 999;
+}
