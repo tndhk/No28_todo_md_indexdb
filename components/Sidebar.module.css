@@ -1,78 +1,85 @@
 .sidebar {
-    width: 280px;
-    height: 100vh;
+    width: 300px;
+    height: 100%;
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    border-right: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 100;
+    position: relative;
+    /* Changed from fixed */
+    z-index: 20;
+    transition: all 0.3s ease;
 }
 
 .header {
     padding: 2rem 1.5rem 1.5rem;
     border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
 }
 
 .nav {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem 0;
+    padding: 1.5rem 1rem;
 }
 
 .navSection {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .navSectionHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1.5rem;
-    margin-bottom: 0.5rem;
+    padding: 0 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .navTitle {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--foreground);
-    opacity: 0.5;
+    letter-spacing: 0.15em;
+    color: var(--foreground-muted);
     padding: 0;
     margin: 0;
 }
 
 .addButton {
-    background: transparent;
-    border: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
     color: var(--foreground);
-    opacity: 0.5;
-    padding: 0.25rem;
+    padding: 0.3rem;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: var(--radius-sm, 4px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .addButton:hover {
-    opacity: 1;
-    background: var(--surface-hover);
-    color: var(--primary);
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 10px var(--primary-glow);
+    transform: scale(1.05);
 }
 
 .navItem {
@@ -80,48 +87,63 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
+    padding: 0.8rem 1rem;
     background: transparent;
-    border: none;
-    color: var(--foreground);
-    font-size: 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--foreground-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: left;
-    opacity: 0.7;
+    margin-bottom: 0.25rem;
 }
 
 .navItem:hover {
     background: var(--surface-hover);
-    opacity: 1;
+    color: var(--foreground);
+    transform: translateX(4px);
 }
 
 .navItem.active {
-    background: var(--surface);
-    opacity: 1;
-    border-left: 3px solid var(--primary);
-    padding-left: calc(1.5rem - 3px);
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
 }
 
 .navItem svg {
     flex-shrink: 0;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.navItem.active svg {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px var(--primary));
 }
 
 .projectTitle {
     flex: 1;
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .editInput {
     flex: 1;
     background: var(--surface);
     border: 1px solid var(--primary);
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-sm);
     color: var(--foreground);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     padding: 0.25rem 0.5rem;
     outline: none;
+    box-shadow: 0 0 10px var(--primary-glow);
 }
 
 .editInput:disabled {

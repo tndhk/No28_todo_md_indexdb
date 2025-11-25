@@ -1,35 +1,45 @@
 .container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  overflow: hidden;
 }
 
 .main {
   flex: 1;
-  margin-left: 280px;
   display: flex;
   flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
 }
 
 .header {
-  padding: 2rem 2rem 1rem;
+  padding: 2rem 2.5rem 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  background: rgba(255, 255, 255, 0.02);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  z-index: 10;
 }
 
 .projectTitle {
-  font-size: 2rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--foreground), var(--primary));
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: var(--gradient-aurora);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  filter: drop-shadow(0 2px 10px rgba(99, 102, 241, 0.3));
 }
 
 .headerActions {
@@ -42,20 +52,23 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--background);
+  padding: 0.6rem 1.2rem;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
 }
 
 .toggleButton:hover {
-  background: var(--accent-hover);
+  background: var(--surface-hover);
   border-color: var(--primary);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .toggleButton:active {
@@ -64,7 +77,9 @@
 
 .content {
   flex: 1;
-  padding: 1rem 2rem 2rem;
+  padding: 0 2.5rem 2.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .loading {
@@ -73,7 +88,10 @@
   justify-content: center;
   min-height: 100vh;
   font-size: 1.5rem;
-  opacity: 0.7;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  color: var(--foreground-muted);
+  background: var(--background);
 }
 
 .placeholder {
@@ -83,13 +101,15 @@
   justify-content: center;
   min-height: 400px;
   opacity: 0.5;
+  color: var(--foreground-muted);
 }
 
 .placeholder h2 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
+  font-weight: 200;
 }
 
 .placeholder p {
-  font-size: 1rem;
+  font-size: 1.1rem;
 }

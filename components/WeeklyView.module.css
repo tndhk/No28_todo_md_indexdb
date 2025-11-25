@@ -1,49 +1,59 @@
 .weeklyView {
     width: 100%;
     overflow-x: auto;
+    padding-bottom: 1rem;
 }
 
 .weekHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
+    padding: 1.5rem 1rem;
     border-bottom: 1px solid var(--border);
     gap: 1rem;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .navButton {
-    padding: 0.5rem 1rem;
-    background: var(--glass-bg);
+    padding: 0.6rem 1.2rem;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 500;
-    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+    font-weight: 600;
+    color: var(--foreground);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
 }
 
 .navButton:hover {
     background: var(--surface-hover);
     border-color: var(--primary);
     color: var(--primary);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+    transform: translateY(-2px);
 }
 
 .navButton:active {
-    transform: scale(0.98);
+    transform: translateY(0);
 }
 
 .weekRange {
-    font-weight: 600;
-    font-size: 1rem;
-    min-width: 150px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-width: 180px;
     text-align: center;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .weekGrid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1rem;
-    padding: 1rem;
+    padding: 1.5rem;
     min-width: 100%;
 }
 
@@ -52,48 +62,58 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
 }
 
 .dayColumn:hover {
-    border-color: var(--primary);
+    border-color: var(--border-highlight);
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    background: var(--surface-hover);
 }
 
 .dayColumn.today {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--primary-glow);
+    box-shadow: 0 0 0 1px var(--primary-glow), 0 0 20px rgba(99, 102, 241, 0.1);
+    background: rgba(99, 102, 241, 0.05);
 }
 
 .dayHeader {
     padding: 1rem;
-    background: var(--glass-bg);
+    background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid var(--border);
     text-align: center;
 }
 
 .dayName {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.7;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
     margin-bottom: 0.25rem;
+    color: var(--foreground-muted);
 }
 
 .dayDate {
     font-size: 1.5rem;
     font-weight: 700;
+    color: var(--foreground);
 }
 
 .today .dayHeader {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
 }
 
-.today .dayName,
-.today .dayDate {
+.today .dayName {
+    color: var(--primary);
     opacity: 1;
+}
+
+.today .dayDate {
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary-glow);
 }
 
 .taskList {
@@ -102,24 +122,36 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .taskList.dropActive {
-    background: rgba(59, 130, 246, 0.05);
-    border-radius: var(--radius-md);
-    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3);
+    background: rgba(99, 102, 241, 0.05);
+    box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.1);
 }
 
 .taskCard {
-    padding: 0.75rem;
-    background: var(--glass-bg);
+    padding: 0.8rem;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     cursor: grab;
-    transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     animation: fadeIn 0.3s ease-out;
     will-change: transform, box-shadow, border-color;
+    position: relative;
+    overflow: hidden;
+}
+
+.taskCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--border);
+    transition: all 0.2s;
 }
 
 .taskCard:active {
@@ -127,28 +159,37 @@
 }
 
 .taskCard:hover {
-    transform: translateX(4px);
-    border-color: var(--primary);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    transform: translateY(-2px) scale(1.02);
+    border-color: var(--border-highlight);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: var(--surface-hover);
+    z-index: 5;
 }
 
-.taskCard.todo {
-    border-left: 3px solid rgba(148, 163, 184, 0.5);
+.taskCard.todo::before {
+    background: var(--foreground-muted);
 }
 
-.taskCard.doing {
-    border-left: 3px solid var(--primary);
+.taskCard.doing::before {
+    background: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.taskCard.done::before {
+    background: var(--success);
 }
 
 .taskCard.done {
-    border-left: 3px solid var(--success);
     opacity: 0.6;
+    background: rgba(15, 23, 42, 0.4);
 }
 
 .taskContent {
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
-    line-height: 1.4;
+    line-height: 1.5;
+    color: var(--foreground);
+    padding-left: 0.5rem;
 }
 
 .taskStatus {
@@ -161,7 +202,7 @@
 .emptyState {
     text-align: center;
     padding: 2rem 1rem;
-    opacity: 0.3;
+    opacity: 0.4;
     font-size: 0.85rem;
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
@@ -170,13 +211,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--foreground-muted);
+    transition: all 0.2s;
+}
+
+.emptyState:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
 }
 
 .taskCard.dragging {
     opacity: 1;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--primary);
     transform: scale(1.05) rotate(-2deg);
     z-index: 1000;
+    background: var(--surface);
 }
 
 .parentContent {
@@ -184,19 +234,23 @@
     opacity: 0.6;
     margin-bottom: 0.25rem;
     font-style: italic;
+    padding-left: 0.5rem;
+    color: var(--foreground-muted);
 }
 
 .repeatBadge {
     display: inline-block;
-    font-size: 0.75rem;
-    color: var(--foreground);
-    background: rgba(34, 197, 94, 0.15);
-    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.1rem 0.4rem;
     border-radius: var(--radius-sm);
     margin-left: 0.5rem;
-    font-weight: 500;
+    font-weight: 600;
+    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .taskContent.completed {
     text-decoration: line-through;
+    color: var(--foreground-muted);
 }
