@@ -22,6 +22,8 @@ import {
   reorderTasks as apiReorderTasks,
   updateGroup as apiUpdateGroup,
   deleteGroup as apiDeleteGroup,
+  moveTaskToParent as apiMoveTaskToParent,
+  moveTaskToGroup as apiMoveTaskToGroup,
   getErrorMessage,
 } from '@/lib/api-indexeddb';
 import styles from './page.module.css';
@@ -381,6 +383,136 @@ export default function Home() {
     }
   };
 
+  const handleTaskMoveToParent = async (groupId: string, taskId: string, newParentId: string | null) => {
+    if (!currentProjectId) return;
+
+    const previousProjects = projects;
+
+    // Optimistic update
+    updateCurrentGroupTasks(tasks => {
+      let newTasks = tasks;
+
+      // Find and remove task from current location
+      const findAndRemove = (tasksToSearch: Task[]): Task | null => {
+        for (let i = 0; i < tasksToSearch.length; i++) {
+          if (tasksToSearch[i].id === taskId) {
+            const removed = tasksToSearch.splice(i, 1)[0];
+            return removed;
+          }
+          if (tasksToSearch[i].subtasks.length > 0) {
+            const found = findAndRemove(tasksToSearch[i].subtasks);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const movedTask = findAndRemove(newTasks);
+      if (!movedTask) return newTasks;
+
+      // Add to new parent or root
+      if (newParentId) {
+        const findParent = (tasksToSearch: Task[]): Task | null => {
+          for (const task of tasksToSearch) {
+            if (task.id === newParentId) return task;
+            if (task.subtasks.length > 0) {
+              const found = findParent(task.subtasks);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const parentTask = findParent(newTasks);
+        if (parentTask) {
+          movedTask.parentId = newParentId;
+          movedTask.parentContent = parentTask.content;
+          parentTask.subtasks.push(movedTask);
+        }
+      } else {
+        movedTask.parentId = undefined;
+        movedTask.parentContent = undefined;
+        newTasks.push(movedTask);
+      }
+
+      return newTasks;
+    });
+
+    try {
+      const updatedProjects = await apiMoveTaskToParent(currentProjectId, groupId, taskId, newParentId);
+      setProjects(updatedProjects);
+      showToast('success', 'Task moved successfully');
+    } catch (error) {
+      setProjects(previousProjects);
+      console.error('Failed to move task to parent:', error);
+      showToast('error', getErrorMessage(error));
+    }
+  };
+
+  const handleTaskMoveToGroup = async (fromGroupId: string, toGroupId: string, taskId: string) => {
+    if (!currentProjectId) return;
+
+    const previousProjects = projects;
+
+    // Helper function to find and remove task
+    const findAndRemoveTask = (tasks: Task[]): Task | null => {
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === taskId) {
+          const removed = tasks.splice(i, 1)[0];
+          return removed;
+        }
+        if (tasks[i].subtasks.length > 0) {
+          const found = findAndRemoveTask(tasks[i].subtasks);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Optimistic update - remove from current group, add to new group
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        const newGroups = project.groups.map(group => {
+          if (group.id === fromGroupId) {
+            return { ...group, tasks: [...group.tasks] };
+          }
+          return group;
+        });
+
+        // Find and remove task from source group
+        const movedTask = findAndRemoveTask(
+          newGroups.find(g => g.id === fromGroupId)?.tasks || []
+        );
+
+        // Add to target group if we found the task
+        if (movedTask) {
+          const updated: Task = {
+            ...movedTask,
+            parentId: undefined,
+            parentContent: undefined,
+          };
+          const targetGroup = newGroups.find(g => g.id === toGroupId);
+          if (targetGroup) {
+            targetGroup.tasks.push(updated);
+          }
+        }
+
+        return { ...project, groups: newGroups };
+      }
+      return project;
+    }));
+
+    try {
+      const updatedProjects = await apiMoveTaskToGroup(currentProjectId, fromGroupId, toGroupId, taskId);
+      setProjects(updatedProjects);
+      showToast('success', 'Task moved to group successfully');
+    } catch (error) {
+      setProjects(previousProjects);
+      console.error('Failed to move task to group:', error);
+      showToast('error', getErrorMessage(error));
+    }
+  };
+
   const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => {
     if (!currentProjectId || !currentGroupId) return;
 
@@ -488,6 +620,8 @@ export default function Home() {
                   onTaskAdd={handleTaskAdd}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskReorder={handleTaskReorder}
+                  onTaskMoveToParent={handleTaskMoveToParent}
+                  onTaskMoveToGroup={handleTaskMoveToGroup}
                   onGroupRename={handleGroupRename}
                   onGroupDelete={handleGroupDelete}
                 />

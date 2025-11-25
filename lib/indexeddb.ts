@@ -423,6 +423,104 @@ export async function updateGroup(projectId: string, groupId: string, name: stri
 }
 
 /**
+ * Move a task to a new parent task (same group)
+ */
+export async function moveTaskToParent(
+    projectId: string,
+    groupId: string,
+    taskId: string,
+    newParentId: string | null
+): Promise<void> {
+    const project = await getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    const group = project.groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+
+    // Find and remove task from its current location
+    const findAndRemoveTask = (tasks: Task[]): Task | null => {
+        for (let i = 0; i < tasks.length; i++) {
+            if (tasks[i].id === taskId) {
+                const removed = tasks.splice(i, 1)[0];
+                return removed;
+            }
+            if (tasks[i].subtasks.length > 0) {
+                const found = findAndRemoveTask(tasks[i].subtasks);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    const movedTask = findAndRemoveTask(group.tasks);
+    if (!movedTask) {
+        throw new Error('Task not found');
+    }
+
+    // Update parent info
+    if (newParentId) {
+        const newParentTask = findTask(group.tasks, newParentId);
+        if (!newParentTask) throw new Error('New parent task not found');
+
+        movedTask.parentId = newParentId;
+        movedTask.parentContent = newParentTask.content;
+        newParentTask.subtasks.push(movedTask);
+    } else {
+        movedTask.parentId = undefined;
+        movedTask.parentContent = undefined;
+        group.tasks.push(movedTask);
+    }
+
+    await updateProject(project);
+}
+
+/**
+ * Move a task to a different group
+ */
+export async function moveTaskToGroup(
+    projectId: string,
+    fromGroupId: string,
+    toGroupId: string,
+    taskId: string
+): Promise<void> {
+    const project = await getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    const fromGroup = project.groups.find(g => g.id === fromGroupId);
+    if (!fromGroup) throw new Error('From group not found');
+
+    const toGroup = project.groups.find(g => g.id === toGroupId);
+    if (!toGroup) throw new Error('To group not found');
+
+    // Find and remove task from source group
+    const findAndRemoveTask = (tasks: Task[]): Task | null => {
+        for (let i = 0; i < tasks.length; i++) {
+            if (tasks[i].id === taskId) {
+                const removed = tasks.splice(i, 1)[0];
+                return removed;
+            }
+            if (tasks[i].subtasks.length > 0) {
+                const found = findAndRemoveTask(tasks[i].subtasks);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    const movedTask = findAndRemoveTask(fromGroup.tasks);
+    if (!movedTask) {
+        throw new Error('Task not found in source group');
+    }
+
+    // Clear parent info when moving to different group (becomes root task)
+    movedTask.parentId = undefined;
+    movedTask.parentContent = undefined;
+
+    toGroup.tasks.push(movedTask);
+    await updateProject(project);
+}
+
+/**
  * Initialize with sample data (optional, for first-time users)
  */
 export async function initializeSampleData(): Promise<void> {

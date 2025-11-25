@@ -2,8 +2,8 @@
 
 import { Task, RepeatFrequency, Group } from '@/lib/types';
 import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical, X } from 'lucide-react';
-import { useState } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { useState, useMemo } from 'react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import styles from './TreeView.module.css';
@@ -15,9 +15,18 @@ interface TreeViewProps {
     onTaskAdd: (parentTask?: Task) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onTaskReorder?: (groupId: string, tasks: Task[]) => void;
+    onTaskMoveToParent?: (groupId: string, taskId: string, newParentId: string | null) => void;
+    onTaskMoveToGroup?: (fromGroupId: string, toGroupId: string, taskId: string) => void;
     onGroupRename?: (groupId: string, newName: string) => void;
     onGroupDelete?: (groupId: string) => void;
     onGroupAdd?: () => void;
+}
+
+// Helper type to track task context
+interface TaskContext {
+    groupId: string;
+    parentId: string | null;
+    taskIndex: number;
 }
 
 function TaskItem({
@@ -216,7 +225,6 @@ function GroupItem({
     onTaskDelete,
     onTaskAdd,
     onTaskUpdate,
-    onTaskReorder,
     onGroupRename,
     onGroupDelete,
 }: {
@@ -225,39 +233,26 @@ function GroupItem({
     onTaskDelete: (task: Task) => void;
     onTaskAdd: (parentTask?: Task) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
-    onTaskReorder?: (tasks: Task[]) => void;
     onGroupRename?: (newName: string) => void;
     onGroupDelete?: () => void;
 }) {
     const [isEditingName, setIsEditingName] = useState(false);
     const [editName, setEditName] = useState(group.name);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id && onTaskReorder) {
-            let oldIndex = -1;
-            let newIndex = -1;
-
-            for (let i = 0; i < group.tasks.length; i++) {
-                if (group.tasks[i].id === active.id) oldIndex = i;
-                if (group.tasks[i].id === over?.id) newIndex = i;
-                if (oldIndex !== -1 && newIndex !== -1) break;
-            }
-
-            if (oldIndex !== -1 && newIndex !== -1) {
-                const newTasks = arrayMove(group.tasks, oldIndex, newIndex);
-                onTaskReorder(newTasks);
-            }
-        }
-    };
+    // Build flat list of all task IDs for this group
+    const allTaskIds = useMemo(() => {
+        const ids: string[] = [];
+        const collectIds = (tasks: Task[]) => {
+            tasks.forEach(task => {
+                ids.push(task.id);
+                if (task.subtasks.length > 0) {
+                    collectIds(task.subtasks);
+                }
+            });
+        };
+        collectIds(group.tasks);
+        return ids;
+    }, [group.tasks]);
 
     const handleSaveName = () => {
         if (editName.trim() && onGroupRename) {
@@ -321,27 +316,21 @@ function GroupItem({
                 )}
             </div>
 
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+            <SortableContext
+                items={allTaskIds}
+                strategy={verticalListSortingStrategy}
             >
-                <SortableContext
-                    items={group.tasks.map(t => t.id)}
-                    strategy={verticalListSortingStrategy}
-                >
-                    {group.tasks.map((task) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            onTaskToggle={onTaskToggle}
-                            onTaskDelete={onTaskDelete}
-                            onTaskAdd={onTaskAdd}
-                            onTaskUpdate={onTaskUpdate}
-                        />
-                    ))}
-                </SortableContext>
-            </DndContext>
+                {group.tasks.map((task) => (
+                    <TaskItem
+                        key={task.id}
+                        task={task}
+                        onTaskToggle={onTaskToggle}
+                        onTaskDelete={onTaskDelete}
+                        onTaskAdd={onTaskAdd}
+                        onTaskUpdate={onTaskUpdate}
+                    />
+                ))}
+            </SortableContext>
         </div>
     );
 }
@@ -353,42 +342,165 @@ export default function TreeView({
     onTaskAdd,
     onTaskUpdate,
     onTaskReorder,
+    onTaskMoveToParent,
+    onTaskMoveToGroup,
     onGroupRename,
     onGroupDelete,
     onGroupAdd,
 }: TreeViewProps) {
-    return (
-        <div className={styles.treeView}>
-            <div className={styles.addTaskContainer}>
-                <button className={styles.addTaskButton} onClick={() => onTaskAdd()}>
-                    <Plus size={18} />
-                    <span>Add Task</span>
-                </button>
-                {onGroupAdd && (
-                    <button className={styles.addGroupButton} onClick={onGroupAdd}>
-                        <Plus size={18} />
-                        <span>Add Group</span>
-                    </button>
-                )}
-            </div>
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-            <div className={styles.groups}>
-                {groups.map((group, index) => (
-                    <div key={group.id}>
-                        {index > 0 && <div className={styles.groupSeparator} />}
-                        <GroupItem
-                            group={group}
-                            onTaskToggle={onTaskToggle}
-                            onTaskDelete={onTaskDelete}
-                            onTaskAdd={onTaskAdd}
-                            onTaskUpdate={onTaskUpdate}
-                            onTaskReorder={(tasks) => onTaskReorder?.(group.id, tasks)}
-                            onGroupRename={(newName) => onGroupRename?.(group.id, newName)}
-                            onGroupDelete={() => onGroupDelete?.(group.id)}
-                        />
-                    </div>
-                ))}
+    // Build flat list of all task IDs and their context
+    const taskContextMap = useMemo(() => {
+        const map = new Map<string, TaskContext>();
+
+        groups.forEach(group => {
+            const collectTasks = (tasks: Task[], parentId: string | null = null) => {
+                tasks.forEach((task, index) => {
+                    map.set(task.id, {
+                        groupId: group.id,
+                        parentId,
+                        taskIndex: index,
+                    });
+
+                    if (task.subtasks.length > 0) {
+                        collectTasks(task.subtasks, task.id);
+                    }
+                });
+            };
+
+            collectTasks(group.tasks);
+        });
+
+        return map;
+    }, [groups]);
+
+    const allTaskIds = useMemo(() => {
+        return Array.from(taskContextMap.keys());
+    }, [taskContextMap]);
+
+    // Helper to find a task and its parent
+    const findTaskAndParent = (taskId: string, groupId: string): { task: Task | null; parent: Task | null; parentTasks: Task[] | null } => {
+        const group = groups.find(g => g.id === groupId);
+        if (!group) return { task: null, parent: null, parentTasks: null };
+
+        let foundTask: Task | null = null;
+        let foundParent: Task | null = null;
+        let parentTasks: Task[] | null = null;
+
+        const search = (tasks: Task[], parent: Task | null = null): boolean => {
+            for (let i = 0; i < tasks.length; i++) {
+                if (tasks[i].id === taskId) {
+                    foundTask = tasks[i];
+                    foundParent = parent;
+                    parentTasks = tasks;
+                    return true;
+                }
+                if (tasks[i].subtasks.length > 0) {
+                    if (search(tasks[i].subtasks, tasks[i])) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        search(group.tasks);
+        return { task: foundTask, parent: foundParent, parentTasks };
+    };
+
+    const handleDragStart = (event: DragStartEvent) => {
+        // Can add visual feedback here if needed
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) return;
+
+        const activeContext = taskContextMap.get(active.id as string);
+        const overContext = taskContextMap.get(over.id as string);
+
+        if (!activeContext || !overContext) return;
+
+        // Case 1: Both tasks in same group
+        if (activeContext.groupId === overContext.groupId) {
+            const group = groups.find(g => g.id === activeContext.groupId);
+            if (!group) return;
+
+            // Case 1a: Both have same parent (reorder)
+            if (activeContext.parentId === overContext.parentId) {
+                const result = findTaskAndParent(active.id as string, activeContext.groupId);
+                const parentTasks = result.parentTasks;
+                if (parentTasks !== null) {
+                    const oldIndex = parentTasks.findIndex(t => t.id === active.id);
+                    const newIndex = parentTasks.findIndex(t => t.id === over.id);
+
+                    if (oldIndex !== -1 && newIndex !== -1) {
+                        const reorderedTasks = arrayMove(parentTasks, oldIndex, newIndex);
+
+                        // If reordering root tasks
+                        if (activeContext.parentId === null) {
+                            onTaskReorder?.(activeContext.groupId, reorderedTasks);
+                        } else {
+                            // Reorder subtasks - need to update the whole group
+                            onTaskReorder?.(activeContext.groupId, group.tasks);
+                        }
+                    }
+                }
+            } else {
+                // Case 1b: Different parent in same group (move to parent)
+                onTaskMoveToParent?.(activeContext.groupId, active.id as string, overContext.parentId || null);
+            }
+        } else {
+            // Case 2: Different groups (move to group)
+            onTaskMoveToGroup?.(activeContext.groupId, overContext.groupId, active.id as string);
+        }
+    };
+
+    return (
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
+            <div className={styles.treeView}>
+                <div className={styles.addTaskContainer}>
+                    <button className={styles.addTaskButton} onClick={() => onTaskAdd()}>
+                        <Plus size={18} />
+                        <span>Add Task</span>
+                    </button>
+                    {onGroupAdd && (
+                        <button className={styles.addGroupButton} onClick={onGroupAdd}>
+                            <Plus size={18} />
+                            <span>Add Group</span>
+                        </button>
+                    )}
+                </div>
+
+                <div className={styles.groups}>
+                    {groups.map((group, index) => (
+                        <div key={group.id}>
+                            {index > 0 && <div className={styles.groupSeparator} />}
+                            <GroupItem
+                                group={group}
+                                onTaskToggle={onTaskToggle}
+                                onTaskDelete={onTaskDelete}
+                                onTaskAdd={onTaskAdd}
+                                onTaskUpdate={onTaskUpdate}
+                                onGroupRename={(newName) => onGroupRename?.(group.id, newName)}
+                                onGroupDelete={() => onGroupDelete?.(group.id)}
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
-        </div>
+        </DndContext>
     );
 }
