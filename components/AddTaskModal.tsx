@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { TaskStatus, RepeatFrequency } from '@/lib/types';
+import { TaskStatus, RepeatFrequency, Group } from '@/lib/types';
 import styles from './AddTaskModal.module.css';
 
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => void;
+    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string) => void;
     defaultStatus?: TaskStatus;
     isSubtask?: boolean;
+    groups?: Group[];
+    defaultGroupId?: string;
 }
 
 export default function AddTaskModal({
@@ -17,12 +19,15 @@ export default function AddTaskModal({
     onClose,
     onAdd,
     defaultStatus = 'todo',
-    isSubtask = false
+    isSubtask = false,
+    groups = [],
+    defaultGroupId = ''
 }: AddTaskModalProps) {
     const [content, setContent] = useState('');
-    const [status, setStatus] = useState<TaskStatus>(defaultStatus);
+    const [status] = useState<TaskStatus>('todo');
     const [dueDate, setDueDate] = useState('');
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
+    const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
 
     if (!isOpen) return null;
 
@@ -33,12 +38,13 @@ export default function AddTaskModal({
                 content,
                 status,
                 dueDate || undefined,
-                repeatFrequency ? (repeatFrequency as RepeatFrequency) : undefined
+                repeatFrequency ? (repeatFrequency as RepeatFrequency) : undefined,
+                selectedGroupId || undefined
             );
             setContent('');
             setDueDate('');
             setRepeatFrequency('');
-            setStatus(defaultStatus);
+            setSelectedGroupId(defaultGroupId);
             onClose();
         }
     };
@@ -65,19 +71,24 @@ export default function AddTaskModal({
                         />
                     </div>
 
-                    <div className={styles.formGroup}>
-                        <label htmlFor="status">Status</label>
-                        <select
-                            id="status"
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                            className={styles.select}
-                        >
-                            <option value="todo">To Do</option>
-                            <option value="doing">In Progress</option>
-                            <option value="done">Done</option>
-                        </select>
-                    </div>
+                    {!isSubtask && groups.length > 0 && (
+                        <div className={styles.formGroup}>
+                            <label htmlFor="group">Group</label>
+                            <select
+                                id="group"
+                                value={selectedGroupId}
+                                onChange={(e) => setSelectedGroupId(e.target.value)}
+                                className={styles.select}
+                            >
+                                <option value="">Select a group...</option>
+                                {groups.map(group => (
+                                    <option key={group.id} value={group.id}>
+                                        {group.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className={styles.formGroup}>
                         <label htmlFor="dueDate">Due Date (Optional)</label>

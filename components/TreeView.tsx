@@ -13,7 +13,7 @@ interface TreeViewProps {
     groups: Group[];
     onTaskToggle: (task: Task) => void;
     onTaskDelete: (task: Task) => void;
-    onTaskAdd: (parentTask?: Task) => void;
+    onTaskAdd: (parentTask?: Task, groupId?: string) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onTaskReorder?: (groupId: string, tasks: Task[]) => void;
     onTaskMoveToParent?: (groupId: string, taskId: string, newParentId: string | null) => void;
@@ -232,7 +232,7 @@ function GroupItem({
     group: Group;
     onTaskToggle: (task: Task) => void;
     onTaskDelete: (task: Task) => void;
-    onTaskAdd: (parentTask?: Task) => void;
+    onTaskAdd: (parentTask?: Task, groupId?: string) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onGroupRename?: (newName: string) => void;
     onGroupDelete?: () => void;
@@ -292,6 +292,13 @@ function GroupItem({
                             {group.name}
                         </h3>
                         <div className={styles.groupActions}>
+                            <button
+                                className={styles.groupActionButton}
+                                onClick={() => onTaskAdd(undefined, group.id)}
+                                title="Add task to this group"
+                            >
+                                <Plus size={14} />
+                            </button>
                             <button
                                 className={styles.groupActionButton}
                                 onClick={() => setIsEditingName(true)}
@@ -472,18 +479,14 @@ export default function TreeView({
             onDragEnd={handleDragEnd}
         >
             <div className={styles.treeView}>
-                <div className={styles.addTaskContainer}>
-                    <button className={styles.addTaskButton} onClick={() => onTaskAdd()}>
-                        <Plus size={18} />
-                        <span>Add Task</span>
-                    </button>
-                    {onGroupAdd && (
+                {onGroupAdd && (
+                    <div className={styles.addTaskContainer}>
                         <button className={styles.addGroupButton} onClick={onGroupAdd}>
                             <Plus size={18} />
                             <span>Add Group</span>
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 <div className={styles.groups}>
                     {groups.map((group, index) => (

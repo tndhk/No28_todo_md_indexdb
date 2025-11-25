@@ -39,6 +39,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [modalParentTask, setModalParentTask] = useState<Task | undefined>();
+  const [modalGroupId, setModalGroupId] = useState<string | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [hideDoneTasks, setHideDoneTasks] = useState(false);
 
@@ -292,8 +293,9 @@ export default function Home() {
     }
   };
 
-  const handleTaskAdd = (parentTask?: Task) => {
+  const handleTaskAdd = (parentTask?: Task, groupId?: string) => {
     setModalParentTask(parentTask);
+    setModalGroupId(groupId || currentGroupId);
     setIsModalOpen(true);
   };
 
@@ -534,13 +536,19 @@ export default function Home() {
     }
   };
 
-  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => {
-    if (!currentProjectId || !currentGroupId) return;
+  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string) => {
+    if (!currentProjectId) return;
+
+    const targetGroupId = groupId || modalGroupId || currentGroupId;
+    if (!targetGroupId) {
+      showToast('error', 'Please select a group');
+      return;
+    }
 
     try {
       const updatedProjects = await apiAddTask(
         currentProjectId,
-        currentGroupId,
+        targetGroupId,
         content,
         status,
         dueDate,
@@ -669,9 +677,12 @@ export default function Home() {
           onClose={() => {
             setIsModalOpen(false);
             setModalParentTask(undefined);
+            setModalGroupId(undefined);
           }}
           onAdd={handleModalAdd}
           isSubtask={!!modalParentTask}
+          groups={currentProject?.groups || []}
+          defaultGroupId={modalGroupId}
         />
 
         <CreateProjectModal
