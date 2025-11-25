@@ -388,9 +388,9 @@ export default function TreeView({
         return map;
     }, [groups]);
 
-    const allTaskIds = useMemo(() => {
-        return Array.from(taskContextMap.keys());
-    }, [taskContextMap]);
+    // const allTaskIds = useMemo(() => {
+    //     return Array.from(taskContextMap.keys());
+    // }, [taskContextMap]);
 
     // Helper to find a task and its parent
     const findTaskAndParent = (taskId: string, groupId: string): { task: Task | null; parent: Task | null; parentTasks: Task[] | null } => {
@@ -422,7 +422,7 @@ export default function TreeView({
         return { task: foundTask, parent: foundParent, parentTasks };
     };
 
-    const handleDragStart = (event: DragStartEvent) => {
+    const handleDragStart = (_event: DragStartEvent) => {
         // Can add visual feedback here if needed
     };
 

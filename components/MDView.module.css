@@ -2,74 +2,84 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    gap: 0.5rem;
+    gap: 1rem;
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.8rem 1rem;
     background: var(--surface);
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
+    backdrop-filter: blur(4px);
 }
 
 .statusIndicator {
     font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .savingStatus {
     color: var(--secondary);
+    animation: pulse 2s infinite;
 }
 
 .unsavedStatus {
-    color: var(--warning, #f59e0b);
+    color: var(--warning);
 }
 
 .savedStatus {
     color: var(--success);
-    opacity: 0.7;
+    opacity: 0.8;
 }
 
 .hint {
     font-size: 0.75rem;
-    color: var(--foreground);
-    opacity: 0.5;
+    color: var(--foreground-muted);
 }
 
 .hint kbd {
-    background: var(--background);
+    background: rgba(255, 255, 255, 0.1);
     border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0.1rem 0.3rem;
-    font-family: monospace;
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.7rem;
+    color: var(--foreground);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 .editor {
     flex: 1;
     width: 100%;
     min-height: 400px;
-    padding: 1rem;
-    background: var(--surface);
+    padding: 1.5rem;
+    background: rgba(2, 6, 23, 0.6);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     color: var(--foreground);
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    resize: vertical;
-    transition: border-color 0.2s;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    resize: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
 }
 
 .editor:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+    background: rgba(2, 6, 23, 0.8);
 }
 
 .editor::placeholder {
-    color: var(--foreground);
+    color: var(--foreground-muted);
     opacity: 0.4;
 }
 
@@ -81,7 +91,22 @@
 }
 
 .loadingText {
-    color: var(--foreground);
-    opacity: 0.7;
-    font-size: 0.95rem;
+    color: var(--foreground-muted);
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.5;
+    }
 }

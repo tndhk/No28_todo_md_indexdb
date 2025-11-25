@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { Project, Task, TaskStatus, RepeatFrequency, Group } from '@/lib/types';
+import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
@@ -157,7 +157,7 @@ export default function Home() {
     }
   }, [currentProject]);
 
-  const currentGroup = currentProject?.groups.find(g => g.id === currentGroupId);
+  // const currentGroup = currentProject?.groups.find(g => g.id === currentGroupId);
 
   // Get all tasks from all groups for Calendar view
   const allProjectTasks = useMemo(() => {
@@ -173,7 +173,7 @@ export default function Home() {
   // Filter tasks based on hideDoneTasks state for Calendar view
   const displayTasks = useMemo(() => {
     return hideDoneTasks ? filterDoneTasks(allProjectTasks) : allProjectTasks;
-  }, [allProjectTasks, hideDoneTasks]);
+  }, [allProjectTasks, hideDoneTasks, filterDoneTasks]);
 
   // Filter groups based on hideDoneTasks state for Tree view
   const displayGroups = useMemo(() => {
@@ -413,7 +413,7 @@ export default function Home() {
 
     // Optimistic update
     updateCurrentGroupTasks(tasks => {
-      let newTasks = tasks;
+      const newTasks = tasks;
 
       // Find and remove task from current location
       const findAndRemove = (tasksToSearch: Task[]): Task | null => {

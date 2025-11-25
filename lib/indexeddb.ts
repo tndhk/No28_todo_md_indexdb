@@ -27,20 +27,21 @@ function openDatabase(): Promise<IDBDatabase> {
             // Migration from v1 to v2: convert tasks to groups
             if (oldVersion < 2) {
                 const transaction = (event as IDBVersionChangeEvent).target as IDBOpenDBRequest;
-                const store = (transaction as any).transaction.objectStore(PROJECTS_STORE);
+                const store = (transaction.transaction as IDBTransaction).objectStore(PROJECTS_STORE);
                 const getAllRequest = store.getAll();
 
                 getAllRequest.onsuccess = () => {
-                    const projects = getAllRequest.result as any[];
+                    // Legacy project format with tasks array
+                    const projects = getAllRequest.result as Array<Omit<Project, 'groups'> & { tasks?: Task[] }>;
                     projects.forEach((project) => {
                         // Migrate old format with tasks array to new format with groups
-                        if (project.tasks && !project.groups) {
+                        if (project.tasks && !('groups' in project)) {
                             const defaultGroup: Group = {
                                 id: `${project.id}-default-group`,
                                 name: 'Default',
                                 tasks: project.tasks,
                             };
-                            project.groups = [defaultGroup];
+                            (project as unknown as Project).groups = [defaultGroup];
                             delete project.tasks;
                             store.put(project);
                         }
