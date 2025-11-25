@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
+import { Project, Task, TaskStatus, RepeatFrequency, Group } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
@@ -20,6 +20,8 @@ import {
   updateTask as apiUpdateTask,
   deleteTask as apiDeleteTask,
   reorderTasks as apiReorderTasks,
+  updateGroup as apiUpdateGroup,
+  deleteGroup as apiDeleteGroup,
   getErrorMessage,
 } from '@/lib/api-indexeddb';
 import styles from './page.module.css';
@@ -30,6 +32,7 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentView, setCurrentView] = useState<ViewType>('tree');
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>();
+  const [currentGroupId, setCurrentGroupId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -105,15 +108,23 @@ export default function Home() {
       });
   }, []);
 
-  // Helper function to update current project's tasks
-  const updateCurrentProjectTasks = useCallback((updater: (tasks: Task[]) => Task[]) => {
+  // Helper function to update current group's tasks
+  const updateCurrentGroupTasks = useCallback((updater: (tasks: Task[]) => Task[]) => {
     setProjects(prev => prev.map(project => {
       if (project.id === currentProjectId) {
-        return { ...project, tasks: updater(project.tasks) };
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === currentGroupId) {
+              return { ...group, tasks: updater(group.tasks) };
+            }
+            return group;
+          }),
+        };
       }
       return project;
     }));
-  }, [currentProjectId]);
+  }, [currentProjectId, currentGroupId]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -136,9 +147,18 @@ export default function Home() {
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
+  // Set default group when project changes
+  useEffect(() => {
+    if (currentProject && currentProject.groups.length > 0) {
+      setCurrentGroupId(prev => prev || currentProject.groups[0].id);
+    }
+  }, [currentProject]);
+
+  const currentGroup = currentProject?.groups.find(g => g.id === currentGroupId);
+
   // Filter tasks based on hideDoneTasks state
-  const displayTasks = currentProject?.tasks
-    ? (hideDoneTasks ? filterDoneTasks(currentProject.tasks) : currentProject.tasks)
+  const displayTasks = currentGroup?.tasks
+    ? (hideDoneTasks ? filterDoneTasks(currentGroup.tasks) : currentGroup.tasks)
     : [];
 
   // Helper function to move a task to the bottom of its sibling list
@@ -166,13 +186,13 @@ export default function Home() {
   }, []);
 
   const handleTaskToggle = async (task: Task) => {
-    if (!currentProjectId) return;
+    if (!currentProjectId || !currentGroupId) return;
 
     const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
     const previousProjects = projects;
 
     // Optimistic update
-    updateCurrentProjectTasks(tasks => {
+    updateCurrentGroupTasks(tasks => {
       // First update status
       let updatedTasks = updateTaskInTree(tasks, task.id, { status: newStatus });
 
@@ -202,14 +222,19 @@ export default function Home() {
         // OR, simpler: use the optimistic state we just created.
 
         // Let's get the latest project state from the optimistic update
-        // But wait, `updateCurrentProjectTasks` updates state, we can't access it immediately.
+        // But wait, `updateCurrentGroupTasks` updates state, we can't access it immediately.
         // We need to replicate the logic locally.
 
         const project = updatedProjects.find(p => p.id === currentProjectId);
         if (project) {
-          const reorderedTasks = moveTaskToBottom(project.tasks, task.id);
-          const finalProjects = await apiReorderTasks(currentProjectId, reorderedTasks);
-          setProjects(finalProjects);
+          const group = project.groups.find(g => g.id === currentGroupId);
+          if (group) {
+            const reorderedTasks = moveTaskToBottom(group.tasks, task.id);
+            const finalProjects = await apiReorderTasks(currentProjectId, currentGroupId, reorderedTasks);
+            setProjects(finalProjects);
+          } else {
+            setProjects(updatedProjects);
+          }
         } else {
           setProjects(updatedProjects);
         }
@@ -230,7 +255,7 @@ export default function Home() {
     const previousProjects = projects;
 
     // Optimistic update - immediately remove from UI
-    updateCurrentProjectTasks(tasks => deleteTaskFromTree(tasks, task.id));
+    updateCurrentGroupTasks(tasks => deleteTaskFromTree(tasks, task.id));
 
     try {
       const updatedProjects = await apiDeleteTask(currentProjectId, task.lineNumber, task.id);
@@ -266,16 +291,29 @@ export default function Home() {
     }
   };
 
-  const handleTaskReorder = async (newTasks: Task[]) => {
+  const handleTaskReorder = async (groupId: string, newTasks: Task[]) => {
     if (!currentProjectId) return;
 
     const previousProjects = projects;
 
     // Optimistic update - immediately update UI with new order
-    updateCurrentProjectTasks(() => newTasks);
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === groupId) {
+              return { ...group, tasks: newTasks };
+            }
+            return group;
+          }),
+        };
+      }
+      return project;
+    }));
 
     try {
-      const updatedProjects = await apiReorderTasks(currentProjectId, newTasks);
+      const updatedProjects = await apiReorderTasks(currentProjectId, groupId, newTasks);
       setProjects(updatedProjects);
     } catch (error) {
       // Rollback on error
@@ -285,12 +323,71 @@ export default function Home() {
     }
   };
 
-  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => {
+  const handleGroupRename = async (groupId: string, newName: string) => {
     if (!currentProjectId) return;
+
+    const previousProjects = projects;
+
+    // Optimistic update
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === groupId) {
+              return { ...group, name: newName };
+            }
+            return group;
+          }),
+        };
+      }
+      return project;
+    }));
+
+    try {
+      await apiUpdateGroup(currentProjectId, groupId, newName);
+      showToast('success', 'Group renamed successfully');
+    } catch (error) {
+      setProjects(previousProjects);
+      console.error('Failed to rename group:', error);
+      showToast('error', getErrorMessage(error));
+    }
+  };
+
+  const handleGroupDelete = async (groupId: string) => {
+    if (!currentProjectId) return;
+
+    const previousProjects = projects;
+
+    // Optimistic update
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.filter(group => group.id !== groupId),
+        };
+      }
+      return project;
+    }));
+
+    try {
+      const updatedProjects = await apiDeleteGroup(currentProjectId, groupId);
+      setProjects(updatedProjects);
+      showToast('success', 'Group deleted successfully');
+    } catch (error) {
+      setProjects(previousProjects);
+      console.error('Failed to delete group:', error);
+      showToast('error', getErrorMessage(error));
+    }
+  };
+
+  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency) => {
+    if (!currentProjectId || !currentGroupId) return;
 
     try {
       const updatedProjects = await apiAddTask(
         currentProjectId,
+        currentGroupId,
         content,
         status,
         dueDate,
@@ -385,12 +482,14 @@ export default function Home() {
             <ErrorBoundary>
               {currentView === 'tree' && currentProject && (
                 <TreeView
-                  tasks={displayTasks}
+                  groups={currentProject.groups}
                   onTaskToggle={handleTaskToggle}
                   onTaskDelete={handleTaskDelete}
                   onTaskAdd={handleTaskAdd}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskReorder={handleTaskReorder}
+                  onGroupRename={handleGroupRename}
+                  onGroupDelete={handleGroupDelete}
                 />
               )}
               {currentView === 'weekly' && currentProject && (

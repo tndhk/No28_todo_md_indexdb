@@ -1,7 +1,7 @@
 'use client';
 
-import { Task, RepeatFrequency } from '@/lib/types';
-import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical } from 'lucide-react';
+import { Task, RepeatFrequency, Group } from '@/lib/types';
+import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical, X } from 'lucide-react';
 import { useState } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -9,12 +9,15 @@ import { CSS } from '@dnd-kit/utilities';
 import styles from './TreeView.module.css';
 
 interface TreeViewProps {
-    tasks: Task[];
+    groups: Group[];
     onTaskToggle: (task: Task) => void;
     onTaskDelete: (task: Task) => void;
     onTaskAdd: (parentTask?: Task) => void;
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
-    onTaskReorder?: (tasks: Task[]) => void;
+    onTaskReorder?: (groupId: string, tasks: Task[]) => void;
+    onGroupRename?: (groupId: string, newName: string) => void;
+    onGroupDelete?: (groupId: string) => void;
+    onGroupAdd?: () => void;
 }
 
 function TaskItem({
@@ -207,14 +210,28 @@ function TaskItem({
     );
 }
 
-export default function TreeView({
-    tasks,
+function GroupItem({
+    group,
     onTaskToggle,
     onTaskDelete,
     onTaskAdd,
     onTaskUpdate,
-    onTaskReorder
-}: TreeViewProps) {
+    onTaskReorder,
+    onGroupRename,
+    onGroupDelete,
+}: {
+    group: Group;
+    onTaskToggle: (task: Task) => void;
+    onTaskDelete: (task: Task) => void;
+    onTaskAdd: (parentTask?: Task) => void;
+    onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
+    onTaskReorder?: (tasks: Task[]) => void;
+    onGroupRename?: (newName: string) => void;
+    onGroupDelete?: () => void;
+}) {
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editName, setEditName] = useState(group.name);
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -226,31 +243,82 @@ export default function TreeView({
         const { active, over } = event;
 
         if (active.id !== over?.id && onTaskReorder) {
-            // Optimize: find both indices in a single pass - O(n) instead of O(2n)
             let oldIndex = -1;
             let newIndex = -1;
 
-            for (let i = 0; i < tasks.length; i++) {
-                if (tasks[i].id === active.id) oldIndex = i;
-                if (tasks[i].id === over?.id) newIndex = i;
-                // Early exit when both found
+            for (let i = 0; i < group.tasks.length; i++) {
+                if (group.tasks[i].id === active.id) oldIndex = i;
+                if (group.tasks[i].id === over?.id) newIndex = i;
                 if (oldIndex !== -1 && newIndex !== -1) break;
             }
 
             if (oldIndex !== -1 && newIndex !== -1) {
-                const newTasks = arrayMove(tasks, oldIndex, newIndex);
+                const newTasks = arrayMove(group.tasks, oldIndex, newIndex);
                 onTaskReorder(newTasks);
             }
         }
     };
 
+    const handleSaveName = () => {
+        if (editName.trim() && onGroupRename) {
+            onGroupRename(editName.trim());
+        }
+        setIsEditingName(false);
+    };
+
+    const handleCancelName = () => {
+        setEditName(group.name);
+        setIsEditingName(false);
+    };
+
     return (
-        <div className={styles.treeView}>
-            <div className={styles.addTaskContainer}>
-                <button className={styles.addTaskButton} onClick={() => onTaskAdd()}>
-                    <Plus size={18} />
-                    <span>Add Task</span>
-                </button>
+        <div>
+            <div className={styles.groupHeader}>
+                {isEditingName ? (
+                    <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onBlur={handleSaveName}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveName();
+                            if (e.key === 'Escape') handleCancelName();
+                        }}
+                        className={styles.groupNameInput}
+                        autoFocus
+                    />
+                ) : (
+                    <>
+                        <h3
+                            className={styles.groupName}
+                            onDoubleClick={() => setIsEditingName(true)}
+                        >
+                            {group.name}
+                        </h3>
+                        <div className={styles.groupActions}>
+                            <button
+                                className={styles.groupActionButton}
+                                onClick={() => setIsEditingName(true)}
+                                title="Rename group"
+                            >
+                                <Edit2 size={14} />
+                            </button>
+                            {onGroupDelete && (
+                                <button
+                                    className={styles.groupActionButton}
+                                    onClick={() => {
+                                        if (confirm('Are you sure you want to delete this group and all its tasks?')) {
+                                            onGroupDelete();
+                                        }
+                                    }}
+                                    title="Delete group"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
             <DndContext
@@ -259,10 +327,10 @@ export default function TreeView({
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext
-                    items={tasks.map(t => t.id)}
+                    items={group.tasks.map(t => t.id)}
                     strategy={verticalListSortingStrategy}
                 >
-                    {tasks.map((task) => (
+                    {group.tasks.map((task) => (
                         <TaskItem
                             key={task.id}
                             task={task}
@@ -274,6 +342,53 @@ export default function TreeView({
                     ))}
                 </SortableContext>
             </DndContext>
+        </div>
+    );
+}
+
+export default function TreeView({
+    groups,
+    onTaskToggle,
+    onTaskDelete,
+    onTaskAdd,
+    onTaskUpdate,
+    onTaskReorder,
+    onGroupRename,
+    onGroupDelete,
+    onGroupAdd,
+}: TreeViewProps) {
+    return (
+        <div className={styles.treeView}>
+            <div className={styles.addTaskContainer}>
+                <button className={styles.addTaskButton} onClick={() => onTaskAdd()}>
+                    <Plus size={18} />
+                    <span>Add Task</span>
+                </button>
+                {onGroupAdd && (
+                    <button className={styles.addGroupButton} onClick={onGroupAdd}>
+                        <Plus size={18} />
+                        <span>Add Group</span>
+                    </button>
+                )}
+            </div>
+
+            <div className={styles.groups}>
+                {groups.map((group, index) => (
+                    <div key={group.id}>
+                        {index > 0 && <div className={styles.groupSeparator} />}
+                        <GroupItem
+                            group={group}
+                            onTaskToggle={onTaskToggle}
+                            onTaskDelete={onTaskDelete}
+                            onTaskAdd={onTaskAdd}
+                            onTaskUpdate={onTaskUpdate}
+                            onTaskReorder={(tasks) => onTaskReorder?.(group.id, tasks)}
+                            onGroupRename={(newName) => onGroupRename?.(group.id, newName)}
+                            onGroupDelete={() => onGroupDelete?.(group.id)}
+                        />
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

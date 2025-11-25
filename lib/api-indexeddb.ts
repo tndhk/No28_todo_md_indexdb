@@ -3,7 +3,7 @@
  * Provides the same interface as lib/api.ts but uses IndexedDB instead of HTTP
  */
 
-import { Task, TaskStatus, Project, RepeatFrequency } from './types';
+import { Task, TaskStatus, Project, RepeatFrequency, Group } from './types';
 import * as idb from './indexeddb';
 import {
     validateProjectId,
@@ -73,10 +73,16 @@ export async function createProject(title: string): Promise<Project> {
             throw new ApiError('A project with this name already exists', 400);
         }
 
+        const defaultGroup: Group = {
+            id: `${id}-default-group`,
+            name: 'Default',
+            tasks: [],
+        };
+
         const newProject: Omit<Project, 'path'> = {
             id,
             title,
-            tasks: [],
+            groups: [defaultGroup],
         };
 
         await idb.addProject(newProject);
@@ -122,6 +128,7 @@ export async function updateProjectTitle(projectId: string, title: string): Prom
  */
 export async function addTask(
     projectId: string,
+    groupId: string,
     content: string,
     status: TaskStatus,
     dueDate?: string,
@@ -150,7 +157,7 @@ export async function addTask(
             }
         }
 
-        await idb.addTask(projectId, content, status, dueDate, parentId, repeatFrequency);
+        await idb.addTask(projectId, groupId, content, status, dueDate, parentId, repeatFrequency);
         return await idb.getAllProjects();
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -210,7 +217,7 @@ export async function updateTask(
             throw new ApiError('Project not found', 404);
         }
 
-        // Find the task
+        // Find the task across all groups
         const findTaskInTree = (tasks: Task[]): Task | null => {
             for (const task of tasks) {
                 if (task.id === taskId) return task;
@@ -222,7 +229,12 @@ export async function updateTask(
             return null;
         };
 
-        const task = findTaskInTree(project.tasks);
+        let task: Task | null = null;
+        for (const group of project.groups) {
+            task = findTaskInTree(group.tasks);
+            if (task) break;
+        }
+
         if (!task) {
             throw new ApiError('Task not found', 404);
         }
@@ -264,14 +276,15 @@ export async function deleteTask(
 }
 
 /**
- * Reorder tasks
+ * Reorder tasks within a group
  */
 export async function reorderTasks(
     projectId: string,
+    groupId: string,
     tasks: Task[]
 ): Promise<Project[]> {
     try {
-        await idb.reorderTasks(projectId, tasks);
+        await idb.reorderTasks(projectId, groupId, tasks);
         return await idb.getAllProjects();
     } catch (error) {
         console.error('Failed to reorder tasks:', error);
@@ -338,28 +351,34 @@ function serializeProjectToMarkdown(project: Project): string {
         });
     }
 
-    // Group tasks by status
-    const todoTasks = project.tasks.filter(t => t.status === 'todo');
-    const doingTasks = project.tasks.filter(t => t.status === 'doing');
-    const doneTasks = project.tasks.filter(t => t.status === 'done');
-
-    if (todoTasks.length > 0) {
-        lines.push('## Todo');
-        writeTasks(todoTasks);
+    // For each group
+    project.groups.forEach(group => {
+        lines.push(`### ${group.name}`);
         lines.push('');
-    }
 
-    if (doingTasks.length > 0) {
-        lines.push('## Doing');
-        writeTasks(doingTasks);
-        lines.push('');
-    }
+        // Group tasks by status
+        const todoTasks = group.tasks.filter(t => t.status === 'todo');
+        const doingTasks = group.tasks.filter(t => t.status === 'doing');
+        const doneTasks = group.tasks.filter(t => t.status === 'done');
 
-    if (doneTasks.length > 0) {
-        lines.push('## Done');
-        writeTasks(doneTasks);
-        lines.push('');
-    }
+        if (todoTasks.length > 0) {
+            lines.push('#### Todo');
+            writeTasks(todoTasks);
+            lines.push('');
+        }
+
+        if (doingTasks.length > 0) {
+            lines.push('#### Doing');
+            writeTasks(doingTasks);
+            lines.push('');
+        }
+
+        if (doneTasks.length > 0) {
+            lines.push('#### Done');
+            writeTasks(doneTasks);
+            lines.push('');
+        }
+    });
 
     return lines.join('\n');
 }
@@ -371,7 +390,8 @@ function serializeProjectToMarkdown(project: Project): string {
 function parseMarkdownToProject(projectId: string, content: string): Project {
     const lines = content.split('\n');
     let title = projectId;
-    const tasks: Task[] = [];
+    const groups: Group[] = [];
+    let currentGroup: Group | null = null;
     let currentSection: TaskStatus = 'todo';
     const taskStack: { task: Task; indent: number }[] = [];
 
@@ -382,7 +402,39 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             return;
         }
 
-        // Parse Sections
+        // Parse Group header (###)
+        if (line.startsWith('### ')) {
+            const groupName = line.substring(4).trim();
+            currentGroup = {
+                id: `${projectId}-group-${groups.length}`,
+                name: groupName,
+                tasks: [],
+            };
+            groups.push(currentGroup);
+            taskStack.length = 0; // Reset task stack for new group
+            return;
+        }
+
+        // Ensure we have a default group
+        if (!currentGroup) {
+            currentGroup = {
+                id: `${projectId}-default-group`,
+                name: 'Default',
+                tasks: [],
+            };
+            groups.push(currentGroup);
+        }
+
+        // Parse Status Sections (####)
+        if (line.startsWith('#### ')) {
+            const sectionName = line.substring(5).trim().toLowerCase();
+            if (sectionName.includes('todo')) currentSection = 'todo';
+            else if (sectionName.includes('doing')) currentSection = 'doing';
+            else if (sectionName.includes('done')) currentSection = 'done';
+            return;
+        }
+
+        // Also support old format (##) for backwards compatibility
         if (line.startsWith('## ')) {
             const sectionName = line.substring(3).trim().toLowerCase();
             if (sectionName.includes('todo')) currentSection = 'todo';
@@ -393,7 +445,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
 
         // Parse Tasks
         const taskMatch = line.match(/^(\s*)- \[(x| )\] (.*)/);
-        if (taskMatch) {
+        if (taskMatch && currentGroup) {
             const indent = taskMatch[1].length;
             const isChecked = taskMatch[2] === 'x';
             const textContent = taskMatch[3];
@@ -405,7 +457,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             const repeatMatch = textContent.match(/#repeat:(daily|weekly|monthly)/);
             const repeatFrequency = repeatMatch ? (repeatMatch[1] as RepeatFrequency) : undefined;
 
-            const content = textContent
+            const taskContent = textContent
                 .replace(/#due:\d{4}-\d{2}-\d{2}/g, '')
                 .replace(/#repeat:(?:daily|weekly|monthly)/g, '')
                 .trim();
@@ -423,7 +475,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             const newTask: Task = {
                 // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() and substring() instead of Math.random() and substr()
                 id: `${projectId}-${Date.now()}-${crypto.randomUUID()}`,
-                content,
+                content: taskContent,
                 status: isChecked ? 'done' : currentSection,
                 dueDate,
                 repeatFrequency,
@@ -437,19 +489,66 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             if (taskStack.length > 0) {
                 taskStack[taskStack.length - 1].task.subtasks.push(newTask);
             } else {
-                tasks.push(newTask);
+                currentGroup.tasks.push(newTask);
             }
 
             taskStack.push({ task: newTask, indent });
         }
     });
 
+    // Ensure we have at least one group
+    if (groups.length === 0) {
+        groups.push({
+            id: `${projectId}-default-group`,
+            name: 'Default',
+            tasks: [],
+        });
+    }
+
     return {
         id: projectId,
         title,
-        tasks,
+        groups,
         path: '',
     };
+}
+
+/**
+ * Add a new group to a project
+ */
+export async function addGroup(projectId: string, name: string): Promise<string> {
+    try {
+        const groupId = await idb.addGroup(projectId, name);
+        return groupId;
+    } catch (error) {
+        console.error('Failed to add group:', error);
+        throw new ApiError('Failed to add group', 500);
+    }
+}
+
+/**
+ * Update a group's name
+ */
+export async function updateGroup(projectId: string, groupId: string, name: string): Promise<void> {
+    try {
+        await idb.updateGroup(projectId, groupId, name);
+    } catch (error) {
+        console.error('Failed to update group:', error);
+        throw new ApiError('Failed to update group', 500);
+    }
+}
+
+/**
+ * Delete a group and all its tasks
+ */
+export async function deleteGroup(projectId: string, groupId: string): Promise<Project[]> {
+    try {
+        await idb.deleteGroup(projectId, groupId);
+        return await idb.getAllProjects();
+    } catch (error) {
+        console.error('Failed to delete group:', error);
+        throw new ApiError('Failed to delete group', 500);
+    }
 }
 
 /**
