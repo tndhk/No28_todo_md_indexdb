@@ -473,19 +473,24 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
         }
     });
 
+    // Filter out empty groups (except keep at least one default group if no tasks exist)
+    let filteredGroups = groups.filter(group => group.tasks.length > 0);
+
     // Ensure we have at least one group
-    if (groups.length === 0) {
-        groups.push({
-            id: `${projectId}-default-group`,
-            name: 'Default',
-            tasks: [],
-        });
+    if (filteredGroups.length === 0) {
+        filteredGroups = [
+            {
+                id: `${projectId}-default-group`,
+                name: 'Default',
+                tasks: [],
+            },
+        ];
     }
 
     return {
         id: projectId,
         title,
-        groups,
+        groups: filteredGroups,
         path: '',
     };
 }
