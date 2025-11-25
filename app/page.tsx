@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Eye, EyeOff, Search, X } from 'lucide-react';
+import { Eye, EyeOff, Search, X, Cloud, CloudOff } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
-import { useDebounce } from '@/lib/hooks';
+import { useDebounce, useSync, SyncStatus } from '@/lib/hooks';
+import { setProjectChangeCallback } from '@/lib/indexeddb'; // Import setProjectChangeCallback
 import { updateTaskInTree, deleteTaskFromTree, filterDoneTasks, filterTasksBySearch } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
@@ -47,6 +48,30 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
+  // TODO: Replace with actual authenticated user ID from Supabase Auth / NextAuth session
+  // For now, use a dummy ID. If undefined, sync will not run.
+  const userId = "dummy_user_id";
+
+  const { syncStatus, queueProjectForSync } = useSync({
+    userId: userId,
+    onRemoteProjectsFetched: (fetchedProjects) => {
+      setProjects(fetchedProjects);
+      setLoading(false); // Set loading to false once projects are fetched
+      // Ensure currentProjectId is set if it was null
+      if (fetchedProjects.length > 0 && !currentProjectId) {
+        setCurrentProjectId(fetchedProjects[0].id);
+      }
+    },
+  });
+
+  // Register the global project change callback for IndexedDB
+  useEffect(() => {
+    setProjectChangeCallback(queueProjectForSync);
+    return () => {
+      setProjectChangeCallback(null); // Clean up on unmount
+    };
+  }, [queueProjectForSync]);
+
   // Load hideDoneTasks from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('hideDoneTasks');
@@ -69,43 +94,6 @@ export default function Home() {
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
-
-  // Helper function to update current group's tasks
-  const updateCurrentGroupTasks = useCallback((updater: (tasks: Task[]) => Task[]) => {
-    setProjects(prev => prev.map(project => {
-      if (project.id === currentProjectId) {
-        return {
-          ...project,
-          groups: project.groups.map(group => {
-            if (group.id === currentGroupId) {
-              return { ...group, tasks: updater(group.tasks) };
-            }
-            return group;
-          }),
-        };
-      }
-      return project;
-    }));
-  }, [currentProjectId, currentGroupId]);
-
-  const loadProjects = useCallback(async () => {
-    try {
-      const data = await fetchProjects();
-      setProjects(data);
-      if (data.length > 0) {
-        setCurrentProjectId(prev => prev || data[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-      showToast('error', getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
@@ -406,55 +394,66 @@ export default function Home() {
     const previousProjects = projects;
 
     // Optimistic update
-    updateCurrentGroupTasks(tasks => {
-      // Deep copy to avoid mutating state directly
-      const newTasks = JSON.parse(JSON.stringify(tasks));
+    setProjects(prev => prev.map(project => {
+      if (project.id === currentProjectId) {
+        return {
+          ...project,
+          groups: project.groups.map(group => {
+            if (group.id === groupId) {
+              // Deep copy to avoid mutating state directly
+              const newTasks = JSON.parse(JSON.stringify(group.tasks));
 
-      // Find and remove task from current location
-      const findAndRemove = (tasksToSearch: Task[]): Task | null => {
-        for (let i = 0; i < tasksToSearch.length; i++) {
-          if (tasksToSearch[i].id === taskId) {
-            const removed = tasksToSearch.splice(i, 1)[0];
-            return removed;
-          }
-          if (tasksToSearch[i].subtasks.length > 0) {
-            const found = findAndRemove(tasksToSearch[i].subtasks);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
+              // Find and remove task from current location
+              const findAndRemove = (tasksToSearch: Task[]): Task | null => {
+                for (let i = 0; i < tasksToSearch.length; i++) {
+                  if (tasksToSearch[i].id === taskId) {
+                    const removed = tasksToSearch.splice(i, 1)[0];
+                    return removed;
+                  }
+                  if (tasksToSearch[i].subtasks.length > 0) {
+                    const found = findAndRemove(tasksToSearch[i].subtasks);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
 
-      const movedTask = findAndRemove(newTasks);
-      if (!movedTask) return tasks; // Return original if not found
+              const movedTask = findAndRemove(newTasks);
+              if (!movedTask) return group; // Return original group if not found (actually we should probably return group as is, but map expects group)
 
-      // Add to new parent or root
-      if (newParentId) {
-        const findParent = (tasksToSearch: Task[]): Task | null => {
-          for (const task of tasksToSearch) {
-            if (task.id === newParentId) return task;
-            if (task.subtasks.length > 0) {
-              const found = findParent(task.subtasks);
-              if (found) return found;
+              // Add to new parent or root
+              if (newParentId) {
+                const findParent = (tasksToSearch: Task[]): Task | null => {
+                  for (const task of tasksToSearch) {
+                    if (task.id === newParentId) return task;
+                    if (task.subtasks.length > 0) {
+                      const found = findParent(task.subtasks);
+                      if (found) return found;
+                    }
+                  }
+                  return null;
+                };
+
+                const parentTask = findParent(newTasks);
+                if (parentTask) {
+                  movedTask.parentId = newParentId;
+                  movedTask.parentContent = parentTask.content;
+                  parentTask.subtasks.push(movedTask);
+                }
+              } else {
+                movedTask.parentId = undefined;
+                movedTask.parentContent = undefined;
+                newTasks.push(movedTask);
+              }
+
+              return { ...group, tasks: newTasks };
             }
-          }
-          return null;
+            return group;
+          }),
         };
-
-        const parentTask = findParent(newTasks);
-        if (parentTask) {
-          movedTask.parentId = newParentId;
-          movedTask.parentContent = parentTask.content;
-          parentTask.subtasks.push(movedTask);
-        }
-      } else {
-        movedTask.parentId = undefined;
-        movedTask.parentContent = undefined;
-        newTasks.push(movedTask);
       }
-
-      return newTasks;
-    });
+      return project;
+    }));
 
     try {
       const updatedProjects = await apiMoveTaskToParent(currentProjectId, groupId, taskId, newParentId);
@@ -606,6 +605,32 @@ export default function Home() {
     );
   }
 
+  const getSyncIcon = () => {
+    switch (syncStatus) {
+      case 'syncing':
+        return (
+          <div title="Syncing..." className={styles.syncIconWrapper}>
+            <Cloud size={18} className={styles.syncingIcon} />
+          </div>
+        );
+      case 'synced':
+        return (
+          <div title="Synced" className={styles.syncIconWrapper}>
+            <Cloud size={18} className={styles.syncedIcon} />
+          </div>
+        );
+      case 'error':
+        return (
+          <div title="Sync Error" className={styles.syncIconWrapper}>
+            <CloudOff size={18} className={styles.errorIcon} />
+          </div>
+        );
+      case 'idle':
+      default:
+        return null;
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className={styles.container}>
@@ -654,6 +679,7 @@ export default function Home() {
                 {hideDoneTasks ? <EyeOff size={18} /> : <Eye size={18} />}
                 <span>{hideDoneTasks ? 'Show Done' : 'Hide Done'}</span>
               </button>
+              {getSyncIcon()}
             </div>
           </header>
 
@@ -696,7 +722,7 @@ export default function Home() {
               {currentView === 'md' && currentProject && (
                 <MDView
                   projectId={currentProject.id}
-                  onSaveSuccess={loadProjects}
+                  onSaveSuccess={() => { /* no-op, sync will update */ }}
                   onError={(message) => showToast('error', message)}
                 />
               )}
