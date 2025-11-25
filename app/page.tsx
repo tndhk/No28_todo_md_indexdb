@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Eye, EyeOff, Search, X, Cloud, CloudOff } from 'lucide-react';
+import { Eye, EyeOff, Search, X, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import { useDebounce, useSync, SyncStatus } from '@/lib/hooks';
+import { useAuth } from '@/lib/auth-context';
 import { setProjectChangeCallback } from '@/lib/indexeddb'; // Import setProjectChangeCallback
 import { updateTaskInTree, deleteTaskFromTree, filterDoneTasks, filterTasksBySearch } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
 import WeeklyView from '@/components/WeeklyView';
 import MDView from '@/components/MDView';
+import AuthModal from '@/components/AuthModal';
 import AddTaskModal from '@/components/AddTaskModal';
 import CreateProjectModal from '@/components/CreateProjectModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
@@ -48,9 +50,11 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // TODO: Replace with actual authenticated user ID from Supabase Auth / NextAuth session
-  // For now, use a dummy ID. If undefined, sync will not run.
-  const userId = "dummy_user_id";
+  const { user, signOut } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Use authenticated user ID. If undefined, sync will not run.
+  const userId = user?.id;
 
   const { syncStatus, queueProjectForSync } = useSync({
     userId: userId,
@@ -679,6 +683,27 @@ export default function Home() {
                 {hideDoneTasks ? <EyeOff size={18} /> : <Eye size={18} />}
                 <span>{hideDoneTasks ? 'Show Done' : 'Hide Done'}</span>
               </button>
+
+              {user ? (
+                <button
+                  className={styles.toggleButton}
+                  onClick={() => signOut()}
+                  title="Sign Out"
+                >
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <button
+                  className={styles.toggleButton}
+                  onClick={() => setIsAuthModalOpen(true)}
+                  title="Sign In to Sync"
+                >
+                  <LogIn size={18} />
+                  <span>Sign In</span>
+                </button>
+              )}
+
               {getSyncIcon()}
             </div>
           </header>
@@ -747,6 +772,11 @@ export default function Home() {
           isOpen={isCreateProjectModalOpen}
           onClose={() => setIsCreateProjectModalOpen(false)}
           onSubmit={handleCreateProject}
+        />
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
         />
 
         <Toast toasts={toasts} onDismiss={dismissToast} />
