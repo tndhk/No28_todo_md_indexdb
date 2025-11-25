@@ -204,3 +204,100 @@
     border-radius: var(--radius-sm);
     margin-right: 0.5rem;
 }
+
+.groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.groupHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 0.5rem;
+}
+
+.groupName {
+    flex: 1;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    cursor: text;
+    color: var(--foreground);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-md);
+    transition: background 0.2s;
+}
+
+.groupName:hover {
+    background: var(--surface-hover);
+}
+
+.groupNameInput {
+    flex: 1;
+    background: var(--background);
+    border: 2px solid var(--primary);
+    color: var(--foreground);
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.groupActions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.groupHeader:hover .groupActions {
+    opacity: 1;
+}
+
+.groupActionButton {
+    background: none;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0.4rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.groupActionButton:hover {
+    opacity: 1;
+    color: var(--primary);
+}
+
+.groupSeparator {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+}
+
+.addGroupButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    color: var(--foreground);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addGroupButton:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+}

@@ -14,9 +14,15 @@ export interface Task {
     lineNumber: number; // Line number in the file (1-indexed)
 }
 
+export interface Group {
+    id: string;
+    name: string;
+    tasks: Task[];
+}
+
 export interface Project {
     id: string; // Filename without extension
     title: string; // H1 content or Filename
-    tasks: Task[];
+    groups: Group[];
     path: string; // Absolute path
 }

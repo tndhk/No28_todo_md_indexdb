@@ -1,7 +1,7 @@
-import { Project, Task, TaskStatus, RepeatFrequency } from './types';
+import { Project, Task, TaskStatus, RepeatFrequency, Group } from './types';
 
 const DB_NAME = 'MarkdownTodoDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const PROJECTS_STORE = 'projects';
 
 /**
@@ -16,11 +16,36 @@ function openDatabase(): Promise<IDBDatabase> {
 
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
+            const oldVersion = event.oldVersion;
 
             // Create projects store
             if (!db.objectStoreNames.contains(PROJECTS_STORE)) {
                 const projectStore = db.createObjectStore(PROJECTS_STORE, { keyPath: 'id' });
                 projectStore.createIndex('title', 'title', { unique: false });
+            }
+
+            // Migration from v1 to v2: convert tasks to groups
+            if (oldVersion < 2) {
+                const transaction = (event as IDBVersionChangeEvent).target as IDBOpenDBRequest;
+                const store = (transaction as any).transaction.objectStore(PROJECTS_STORE);
+                const getAllRequest = store.getAll();
+
+                getAllRequest.onsuccess = () => {
+                    const projects = getAllRequest.result as any[];
+                    projects.forEach((project) => {
+                        // Migrate old format with tasks array to new format with groups
+                        if (project.tasks && !project.groups) {
+                            const defaultGroup: Group = {
+                                id: `${project.id}-default-group`,
+                                name: 'Default',
+                                tasks: project.tasks,
+                            };
+                            project.groups = [defaultGroup];
+                            delete project.tasks;
+                            store.put(project);
+                        }
+                    });
+                };
             }
         };
     });
@@ -147,6 +172,17 @@ function findTask(tasks: Task[], taskId: string): Task | null {
 }
 
 /**
+ * Find a task by ID across all groups in a project
+ */
+function findTaskInProject(groups: Group[], taskId: string): { group: Group; task: Task } | null {
+    for (const group of groups) {
+        const task = findTask(group.tasks, taskId);
+        if (task) return { group, task };
+    }
+    return null;
+}
+
+/**
  * Remove a task from a task tree
  */
 function removeTask(tasks: Task[], taskId: string): boolean {
@@ -165,10 +201,11 @@ function removeTask(tasks: Task[], taskId: string): boolean {
 }
 
 /**
- * Add a task to a project
+ * Add a task to a project within a specific group
  */
 export async function addTask(
     projectId: string,
+    groupId: string,
     content: string,
     status: TaskStatus = 'todo',
     dueDate?: string,
@@ -177,6 +214,9 @@ export async function addTask(
 ): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
+
+    const group = project.groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
 
     const newTask: Task = {
         id: generateTaskId(projectId),
@@ -192,14 +232,14 @@ export async function addTask(
 
     if (parentId) {
         // Add as subtask
-        const parentTask = findTask(project.tasks, parentId);
+        const parentTask = findTask(group.tasks, parentId);
         if (!parentTask) throw new Error('Parent task not found');
 
         newTask.parentContent = parentTask.content;
         parentTask.subtasks.push(newTask);
     } else {
-        // Add as root task
-        project.tasks.push(newTask);
+        // Add as root task in the group
+        group.tasks.push(newTask);
     }
 
     await updateProject(project);
@@ -216,9 +256,10 @@ export async function updateTask(
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
-    const task = findTask(project.tasks, taskId);
-    if (!task) throw new Error('Task not found');
+    const result = findTaskInProject(project.groups, taskId);
+    if (!result) throw new Error('Task not found');
 
+    const task = result.task;
     // Apply updates
     if (updates.content !== undefined) task.content = updates.content;
     if (updates.status !== undefined) task.status = updates.status;
@@ -235,8 +276,11 @@ export async function deleteTask(projectId: string, taskId: string): Promise<voi
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
-    const removed = removeTask(project.tasks, taskId);
-    if (!removed) throw new Error('Task not found');
+    const result = findTaskInProject(project.groups, taskId);
+    if (!result) throw new Error('Task not found');
+
+    const removed = removeTask(result.group.tasks, taskId);
+    if (!removed) throw new Error('Failed to remove task');
 
     await updateProject(project);
 }
@@ -275,8 +319,11 @@ export async function handleRecurringTask(
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
-    const task = findTask(project.tasks, taskId);
-    if (!task) throw new Error('Task not found');
+    const result = findTaskInProject(project.groups, taskId);
+    if (!result) throw new Error('Task not found');
+
+    const task = result.task;
+    const group = result.group;
     if (!task.repeatFrequency) throw new Error('Task is not recurring');
 
     // Mark current task as done
@@ -301,27 +348,77 @@ export async function handleRecurringTask(
         rawLine: '',
     };
 
-    // Add new task at the same level
+    // Add new task at the same level in the same group
     if (task.parentId) {
-        const parentTask = findTask(project.tasks, task.parentId);
+        const parentTask = findTask(group.tasks, task.parentId);
         if (parentTask) {
             parentTask.subtasks.push(newTask);
         }
     } else {
-        project.tasks.push(newTask);
+        group.tasks.push(newTask);
     }
 
     await updateProject(project);
 }
 
 /**
- * Reorder tasks within a project
+ * Reorder tasks within a group
  */
-export async function reorderTasks(projectId: string, tasks: Task[]): Promise<void> {
+export async function reorderTasks(projectId: string, groupId: string, tasks: Task[]): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
-    project.tasks = tasks;
+    const group = project.groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+
+    group.tasks = tasks;
+    await updateProject(project);
+}
+
+/**
+ * Add a new group to a project
+ */
+export async function addGroup(projectId: string, name: string): Promise<string> {
+    const project = await getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    const groupId = `${projectId}-${Date.now()}-${crypto.randomUUID()}`;
+    const newGroup: Group = {
+        id: groupId,
+        name,
+        tasks: [],
+    };
+
+    project.groups.push(newGroup);
+    await updateProject(project);
+    return groupId;
+}
+
+/**
+ * Delete a group and all its tasks
+ */
+export async function deleteGroup(projectId: string, groupId: string): Promise<void> {
+    const project = await getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    const index = project.groups.findIndex(g => g.id === groupId);
+    if (index === -1) throw new Error('Group not found');
+
+    project.groups.splice(index, 1);
+    await updateProject(project);
+}
+
+/**
+ * Update a group name
+ */
+export async function updateGroup(projectId: string, groupId: string, name: string): Promise<void> {
+    const project = await getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    const group = project.groups.find(g => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+
+    group.name = name;
     await updateProject(project);
 }
 
@@ -334,9 +431,9 @@ export async function initializeSampleData(): Promise<void> {
     // Only initialize if database is empty
     if (projects.length > 0) return;
 
-    const sampleProject: Omit<Project, 'path'> = {
-        id: 'getting-started',
-        title: 'Getting Started',
+    const defaultGroup: Group = {
+        id: 'getting-started-default-group',
+        name: 'Default',
         tasks: [
             {
                 id: 'getting-started-1',
@@ -364,6 +461,12 @@ export async function initializeSampleData(): Promise<void> {
                 rawLine: '',
             },
         ],
+    };
+
+    const sampleProject: Omit<Project, 'path'> = {
+        id: 'getting-started',
+        title: 'Getting Started',
+        groups: [defaultGroup],
     };
 
     await addProject(sampleProject);
