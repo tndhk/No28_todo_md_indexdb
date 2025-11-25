@@ -394,6 +394,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
     let currentGroup: Group | null = null;
     let currentSection: TaskStatus = 'todo';
     const taskStack: { task: Task; indent: number }[] = [];
+    let hasExplicitGroups = false;
 
     lines.forEach((line, index) => {
         // Parse Title
@@ -404,6 +405,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
 
         // Parse Group header (###)
         if (line.startsWith('### ')) {
+            hasExplicitGroups = true;
             const groupName = line.substring(4).trim();
             currentGroup = {
                 id: `${projectId}-group-${groups.length}`,
@@ -415,8 +417,8 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             return;
         }
 
-        // Ensure we have a default group
-        if (!currentGroup) {
+        // Lazy create default group only if we have tasks and no explicit groups
+        if (!currentGroup && !hasExplicitGroups) {
             currentGroup = {
                 id: `${projectId}-default-group`,
                 name: 'Default',
