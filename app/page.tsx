@@ -50,7 +50,17 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const { user, signOut } = useAuth();
+  const showToast = useCallback((type: ToastType, message: string) => {
+    // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
+    const id = `${Date.now()}-${crypto.randomUUID()}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const { user, signOut, loading: authLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Use authenticated user ID. If undefined, sync will not run.
@@ -60,7 +70,6 @@ export default function Home() {
     userId: userId,
     onRemoteProjectsFetched: (fetchedProjects) => {
       setProjects(fetchedProjects);
-      setLoading(false); // Set loading to false once projects are fetched
       // Ensure currentProjectId is set if it was null
       if (fetchedProjects.length > 0 && !currentProjectId) {
         setCurrentProjectId(fetchedProjects[0].id);
@@ -76,6 +85,27 @@ export default function Home() {
     };
   }, [queueProjectForSync]);
 
+  const loadProjects = useCallback(async () => {
+    try {
+      const data = await fetchProjects();
+      setProjects(data);
+      if (data.length > 0 && !currentProjectId) {
+        setCurrentProjectId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      showToast('error', getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [currentProjectId, showToast]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      loadProjects();
+    }
+  }, [authLoading, loadProjects]);
+
   // Load hideDoneTasks from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('hideDoneTasks');
@@ -89,15 +119,7 @@ export default function Home() {
     localStorage.setItem('hideDoneTasks', hideDoneTasks.toString());
   }, [hideDoneTasks]);
 
-  const showToast = useCallback((type: ToastType, message: string) => {
-    // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
-    const id = `${Date.now()}-${crypto.randomUUID()}`;
-    setToasts((prev) => [...prev, { id, type, message }]);
-  }, []);
 
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
