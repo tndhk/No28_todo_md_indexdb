@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency, Group } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
@@ -158,10 +158,21 @@ export default function Home() {
 
   const currentGroup = currentProject?.groups.find(g => g.id === currentGroupId);
 
+  // Get all tasks from all groups for Calendar view
+  const allProjectTasks = useMemo(() => {
+    if (!currentProject) return [];
+
+    const tasks: Task[] = [];
+    currentProject.groups.forEach(group => {
+      tasks.push(...group.tasks);
+    });
+    return tasks;
+  }, [currentProject]);
+
   // Filter tasks based on hideDoneTasks state
-  const displayTasks = currentGroup?.tasks
-    ? (hideDoneTasks ? filterDoneTasks(currentGroup.tasks) : currentGroup.tasks)
-    : [];
+  const displayTasks = useMemo(() => {
+    return hideDoneTasks ? filterDoneTasks(allProjectTasks) : allProjectTasks;
+  }, [allProjectTasks, hideDoneTasks]);
 
   // Helper function to move a task to the bottom of its sibling list
   const moveTaskToBottom = useCallback((tasks: Task[], taskId: string): Task[] => {
