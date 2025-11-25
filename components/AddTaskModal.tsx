@@ -18,7 +18,7 @@ export default function AddTaskModal({
     isOpen,
     onClose,
     onAdd,
-    defaultStatus = 'todo',
+    defaultStatus: _defaultStatus = 'todo',
     isSubtask = false,
     groups = [],
     defaultGroupId = ''
