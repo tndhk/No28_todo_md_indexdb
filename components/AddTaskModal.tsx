@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TaskStatus, RepeatFrequency, Group } from '@/lib/types';
 import styles from './AddTaskModal.module.css';
 
@@ -28,13 +28,6 @@ export default function AddTaskModal({
     const [dueDate, setDueDate] = useState('');
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
     const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
-
-    // Update selectedGroupId when modal opens or defaultGroupId changes
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedGroupId(defaultGroupId);
-        }
-    }, [isOpen, defaultGroupId]);
 
     if (!isOpen) return null;
 
