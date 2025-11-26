@@ -7,7 +7,7 @@ import styles from './AddTaskModal.module.css';
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string) => void;
+    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string, scheduledDate?: string) => void;
     defaultStatus?: TaskStatus;
     isSubtask?: boolean;
     groups?: Group[];
@@ -25,6 +25,7 @@ export default function AddTaskModal({
 }: AddTaskModalProps) {
     const [content, setContent] = useState('');
     const [status] = useState<TaskStatus>('todo');
+    const [scheduledDate, setScheduledDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
     const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
@@ -39,9 +40,11 @@ export default function AddTaskModal({
                 status,
                 dueDate || undefined,
                 repeatFrequency ? (repeatFrequency as RepeatFrequency) : undefined,
-                selectedGroupId || undefined
+                selectedGroupId || undefined,
+                scheduledDate || undefined
             );
             setContent('');
+            setScheduledDate('');
             setDueDate('');
             setRepeatFrequency('');
             setSelectedGroupId(defaultGroupId);
@@ -89,6 +92,17 @@ export default function AddTaskModal({
                             </select>
                         </div>
                     )}
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor="scheduledDate">Scheduled Date (Optional)</label>
+                        <input
+                            id="scheduledDate"
+                            type="date"
+                            value={scheduledDate}
+                            onChange={(e) => setScheduledDate(e.target.value)}
+                            className={styles.input}
+                        />
+                    </div>
 
                     <div className={styles.formGroup}>
                         <label htmlFor="dueDate">Due Date (Optional)</label>

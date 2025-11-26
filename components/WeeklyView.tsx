@@ -2,10 +2,8 @@
 
 import { Task } from '@/lib/types';
 import { useMemo, useState } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners, useDraggable } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { Circle, CheckCircle2 } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './WeeklyView.module.css';
@@ -32,13 +30,11 @@ function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task
         listeners,
         setNodeRef,
         transform,
-        transition,
         isDragging,
-    } = useSortable({ id: task.id });
+    } = useDraggable({ id: task.id });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         opacity: isDragging ? 0.5 : 1,
     };
 
@@ -74,6 +70,11 @@ function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task
                 )}
                 <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
                     {renderMarkdownLinks(task.content)}
+                    {task.scheduledDate && task.dueDate && task.scheduledDate !== task.dueDate && (
+                        <span className={styles.dueBadge} title="Due date">
+                            🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
                     {task.repeatFrequency && (
                         <span className={styles.repeatBadge}>
                             🔁 {task.repeatFrequency}
@@ -157,8 +158,10 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         });
 
         allTasks.forEach((task) => {
-            if (task.dueDate) {
-                const tasks = map.get(task.dueDate);
+            // Prioritize scheduledDate over dueDate
+            const displayDate = task.scheduledDate || task.dueDate;
+            if (displayDate) {
+                const tasks = map.get(displayDate);
                 if (tasks) {
                     tasks.push(task);
                 }
@@ -177,12 +180,18 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         const taskId = active.id as string;
         let newDate = over.id as string;
 
-        // If dropped on a task, get that task's due date
+        // If dropped on a task, get that task's display date (scheduledDate or dueDate)
         // useSortable makes items droppable, so over.id might be a task ID
         if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
             const overTask = taskMap.get(newDate);
-            if (overTask && overTask.dueDate) {
-                newDate = overTask.dueDate;
+            if (overTask) {
+                const overTaskDisplayDate = overTask.scheduledDate || overTask.dueDate;
+                if (overTaskDisplayDate) {
+                    newDate = overTaskDisplayDate;
+                } else {
+                    // Invalid drop target
+                    return;
+                }
             } else {
                 // Invalid drop target
                 return;
@@ -191,10 +200,32 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
 
         // Find the task using map - O(1) instead of O(n)
         const task = taskMap.get(taskId);
-        if (!task || task.dueDate === newDate) return;
+        if (!task) return;
 
-        // Update task due date
-        onTaskUpdate(task, { dueDate: newDate });
+        const currentDisplayDate = task.scheduledDate || task.dueDate;
+
+        console.log('[WeeklyView] Drag ended:', {
+            taskId,
+            taskContent: task.content,
+            currentScheduledDate: task.scheduledDate,
+            currentDueDate: task.dueDate,
+            currentDisplayDate,
+            newDate,
+            willUpdate: currentDisplayDate !== newDate
+        });
+
+        if (currentDisplayDate === newDate) return;
+
+        // Update the appropriate date field:
+        // - If task has scheduledDate, update scheduledDate
+        // - If task only has dueDate, update dueDate to maintain user's original intent
+        if (task.scheduledDate) {
+            console.log('[WeeklyView] Updating scheduledDate to:', newDate);
+            onTaskUpdate(task, { scheduledDate: newDate });
+        } else {
+            console.log('[WeeklyView] Updating dueDate to:', newDate);
+            onTaskUpdate(task, { dueDate: newDate });
+        }
     };
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

@@ -41,6 +41,8 @@ function TaskItemContent({
     onEditCancel,
     editContent,
     setEditContent,
+    editScheduledDate,
+    setEditScheduledDate,
     editDueDate,
     setEditDueDate,
     editRepeatFrequency,
@@ -62,6 +64,8 @@ function TaskItemContent({
     onEditCancel: () => void;
     editContent: string;
     setEditContent: (val: string) => void;
+    editScheduledDate: string;
+    setEditScheduledDate: (val: string) => void;
     editDueDate: string;
     setEditDueDate: (val: string) => void;
     editRepeatFrequency: string;
@@ -136,9 +140,17 @@ function TaskItemContent({
                         />
                         <input
                             type="date"
+                            value={editScheduledDate}
+                            onChange={(e) => setEditScheduledDate(e.target.value)}
+                            className={styles.editDateInput}
+                            placeholder="Scheduled"
+                        />
+                        <input
+                            type="date"
                             value={editDueDate}
                             onChange={(e) => setEditDueDate(e.target.value)}
                             className={styles.editDateInput}
+                            placeholder="Due"
                         />
                         <select
                             value={editRepeatFrequency}
@@ -160,9 +172,15 @@ function TaskItemContent({
                             {renderMarkdownLinks(task.content)}
                         </span>
 
+                        {task.scheduledDate && (
+                            <span className={styles.scheduledDate}>
+                                📅 {new Date(task.scheduledDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                            </span>
+                        )}
+
                         {task.dueDate && (
                             <span className={styles.dueDate}>
-                                {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                                🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
                             </span>
                         )}
 
@@ -218,6 +236,7 @@ function TaskItem({
     const [isExpanded, setIsExpanded] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(task.content);
+    const [editScheduledDate, setEditScheduledDate] = useState(task.scheduledDate || '');
     const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
     const [editRepeatFrequency, setEditRepeatFrequency] = useState(task.repeatFrequency || '');
 
@@ -240,6 +259,7 @@ function TaskItem({
         if (editContent.trim()) {
             onTaskUpdate(task, {
                 content: editContent,
+                scheduledDate: editScheduledDate || undefined,
                 dueDate: editDueDate || undefined,
                 repeatFrequency: editRepeatFrequency ? (editRepeatFrequency as RepeatFrequency) : undefined,
             });
@@ -249,6 +269,7 @@ function TaskItem({
 
     const handleCancel = () => {
         setEditContent(task.content);
+        setEditScheduledDate(task.scheduledDate || '');
         setEditDueDate(task.dueDate || '');
         setEditRepeatFrequency(task.repeatFrequency || '');
         setIsEditing(false);
@@ -266,6 +287,8 @@ function TaskItem({
                 onEditCancel={handleCancel}
                 editContent={editContent}
                 setEditContent={setEditContent}
+                editScheduledDate={editScheduledDate}
+                setEditScheduledDate={setEditScheduledDate}
                 editDueDate={editDueDate}
                 setEditDueDate={setEditDueDate}
                 editRepeatFrequency={editRepeatFrequency}
@@ -627,6 +650,8 @@ export default function TreeView({
                         onEditCancel={() => { }}
                         editContent={activeTask.content}
                         setEditContent={() => { }}
+                        editScheduledDate={activeTask.scheduledDate || ''}
+                        setEditScheduledDate={() => { }}
                         editDueDate={activeTask.dueDate || ''}
                         setEditDueDate={() => { }}
                         editRepeatFrequency={activeTask.repeatFrequency || ''}
