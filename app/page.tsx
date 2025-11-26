@@ -622,6 +622,14 @@ export default function Home() {
     }
   };
 
+  const handleMDSaveSuccess = useCallback(() => {
+    // no-op, sync will update
+  }, []);
+
+  const handleMDError = useCallback((message: string) => {
+    showToast('error', message);
+  }, [showToast]);
+
   // Show loading state
   if (loading) {
     return (
@@ -769,8 +777,8 @@ export default function Home() {
               {currentView === 'md' && currentProject && (
                 <MDView
                   projectId={currentProject.id}
-                  onSaveSuccess={() => { /* no-op, sync will update */ }}
-                  onError={(message) => showToast('error', message)}
+                  onSaveSuccess={handleMDSaveSuccess}
+                  onError={handleMDError}
                 />
               )}
             </ErrorBoundary>
