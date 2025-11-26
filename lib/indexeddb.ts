@@ -4,6 +4,12 @@ const DB_NAME = 'MarkdownTodoDB';
 const DB_VERSION = 2;
 const PROJECTS_STORE = 'projects';
 
+let projectChangeCallback: ((project: Project) => void) | null = null;
+
+export function setProjectChangeCallback(callback: ((project: Project) => void) | null) {
+  projectChangeCallback = callback;
+}
+
 /**
  * Initialize IndexedDB database
  */
@@ -85,7 +91,9 @@ export async function getProjectById(projectId: string): Promise<Project | null>
 /**
  * Add a new project
  */
-export async function addProject(project: Omit<Project, 'path'>): Promise<void> {
+export async function addProject(
+    project: Omit<Project, 'path'>,
+): Promise<void> {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
@@ -95,7 +103,12 @@ export async function addProject(project: Omit<Project, 'path'>): Promise<void> 
         const projectWithPath: Project = { ...project, path: '' };
         const request = store.add(projectWithPath);
 
-        request.onsuccess = () => resolve();
+        request.onsuccess = () => {
+            if (projectChangeCallback) {
+                projectChangeCallback(projectWithPath);
+            }
+            resolve();
+        };
         request.onerror = () => reject(request.error);
     });
 }
@@ -104,7 +117,9 @@ export async function addProject(project: Omit<Project, 'path'>): Promise<void> 
  * Update an existing project
  * @performance Fixed async Promise constructor anti-pattern
  */
-export async function updateProject(project: Partial<Project> & { id: string }): Promise<void> {
+export async function updateProject(
+    project: Partial<Project> & { id: string },
+): Promise<void> {
     const db = await openDatabase();
     // PERFORMANCE: Removed async Promise constructor anti-pattern
     return new Promise((resolve, reject) => {
@@ -125,7 +140,13 @@ export async function updateProject(project: Partial<Project> & { id: string }):
             const updatedProject = { ...existingProject, ...project };
             const putRequest = store.put(updatedProject);
 
-            putRequest.onsuccess = () => resolve();
+            putRequest.onsuccess = () => {
+                console.log('[IDB] Project updated:', updatedProject.id);
+                if (projectChangeCallback) {
+                    projectChangeCallback(updatedProject);
+                }
+                resolve();
+            };
             putRequest.onerror = () => reject(putRequest.error);
         };
 
@@ -526,6 +547,7 @@ export async function moveTaskToGroup(
  */
 export async function initializeSampleData(): Promise<void> {
     const projects = await getAllProjects();
+    console.log('[IDB] Checking sample data initialization. Projects count:', projects.length);
 
     // Only initialize if database is empty
     if (projects.length > 0) return;

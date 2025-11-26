@@ -25,4 +25,5 @@ export interface Project {
     title: string; // H1 content or Filename
     groups: Group[];
     path: string; // Absolute path
+    updated_at?: string; // Timestamp for last update, for sync conflict resolution
 }
