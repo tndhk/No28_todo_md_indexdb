@@ -32,8 +32,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during sign in.';
+      setError(errorMessage);
       setLoading(false);
     }
   };

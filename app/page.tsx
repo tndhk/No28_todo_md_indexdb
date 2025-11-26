@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Eye, EyeOff, Search, X, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
-import { useDebounce, useSync, SyncStatus } from '@/lib/hooks';
+import { useDebounce, useSync } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth-context';
 import { setProjectChangeCallback } from '@/lib/indexeddb'; // Import setProjectChangeCallback
 import { updateTaskInTree, deleteTaskFromTree, filterDoneTasks, filterTasksBySearch } from '@/lib/utils';

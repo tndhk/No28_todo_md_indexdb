@@ -6,6 +6,7 @@ import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSe
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Circle, CheckCircle2 } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './WeeklyView.module.css';
 
@@ -25,7 +26,7 @@ function getAllTasks(tasks: Task[]): Task[] {
     return result;
 }
 
-function DraggableTask({ task }: { task: Task }) {
+function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task: Task, updates: Partial<Task>) => void }) {
     const {
         attributes,
         listeners,
@@ -41,6 +42,13 @@ function DraggableTask({ task }: { task: Task }) {
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const handleToggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onTaskUpdate(task, {
+            status: task.status === 'done' ? 'todo' : 'done'
+        });
+    };
+
     return (
         <div
             ref={setNodeRef}
@@ -49,16 +57,29 @@ function DraggableTask({ task }: { task: Task }) {
             {...listeners}
             className={`${styles.taskCard} ${styles[task.status]}`}
         >
-            {task.parentContent && (
-                <div className={styles.parentContent}>{task.parentContent}</div>
-            )}
-            <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
-                {renderMarkdownLinks(task.content)}
-                {task.repeatFrequency && (
-                    <span className={styles.repeatBadge}>
-                        🔁 {task.repeatFrequency}
-                    </span>
+            <button
+                className={styles.taskCheckbox}
+                onClick={handleToggle}
+                title={task.status === 'done' ? 'Mark as todo' : 'Mark as done'}
+            >
+                {task.status === 'done' ? (
+                    <CheckCircle2 size={16} className={styles.checked} />
+                ) : (
+                    <Circle size={16} />
                 )}
+            </button>
+            <div className={styles.taskCardContent}>
+                {task.parentContent && (
+                    <div className={styles.parentContent}>{task.parentContent}</div>
+                )}
+                <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
+                    {renderMarkdownLinks(task.content)}
+                    {task.repeatFrequency && (
+                        <span className={styles.repeatBadge}>
+                            🔁 {task.repeatFrequency}
+                        </span>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -89,6 +110,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const allTasks = useMemo(() => getAllTasks(tasks), [tasks]);
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
     const [displayDate, setDisplayDate] = useState(new Date());
+    const [weekdayOnly, setWeekdayOnly] = useState(false);
 
     // Optimization: Create task ID lookup map to avoid repeated linear searches - O(1) lookup instead of O(n)
     const taskMap = useMemo(() => {
@@ -118,10 +140,14 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         for (let i = 0; i < 7; i++) {
             const day = new Date(startOfWeek);
             day.setDate(startOfWeek.getDate() + i);
-            days.push(day);
+            const dayOfWeekNum = day.getDay();
+            // Skip Saturday (6) and Sunday (0) if weekdayOnly is true
+            if (!weekdayOnly || (dayOfWeekNum !== 0 && dayOfWeekNum !== 6)) {
+                days.push(day);
+            }
         }
         return days;
-    }, [displayDate]);
+    }, [displayDate, weekdayOnly]);
 
     const tasksByDay = useMemo(() => {
         const map = new Map<string, Task[]>();
@@ -198,7 +224,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                     </button>
                     <div className={styles.weekRange}>
                         {weekDays[0].toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })} 〜{' '}
-                        {weekDays[6].toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                        {weekDays[weekDays.length - 1].toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     </div>
                     <button
                         className={styles.navButton}
@@ -209,6 +235,13 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                         }}
                     >
                         翌週 →
+                    </button>
+                    <button
+                        className={`${styles.navButton} ${weekdayOnly ? styles.active : ''}`}
+                        onClick={() => setWeekdayOnly(!weekdayOnly)}
+                        title={weekdayOnly ? 'Show weekends' : 'Hide weekends'}
+                    >
+                        {weekdayOnly ? 'Weekday only' : 'Full week'}
                     </button>
                 </div>
                 <div className={styles.weekGrid}>
@@ -226,7 +259,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
 
                                 <DroppableDay dateStr={dateStr}>
                                     {dayTasks.map((task) => (
-                                        <DraggableTask key={task.id} task={task} />
+                                        <DraggableTask key={task.id} task={task} onTaskUpdate={onTaskUpdate} />
                                     ))}
                                     {dayTasks.length === 0 && (
                                         <div className={styles.emptyState}>Drop tasks here</div>
@@ -241,16 +274,21 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             <DragOverlay>
                 {draggedTask ? (
                     <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging}`}>
-                        {draggedTask.parentContent && (
-                            <div className={styles.parentContent}>{draggedTask.parentContent}</div>
-                        )}
-                        <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
-                            {renderMarkdownLinks(draggedTask.content)}
-                            {draggedTask.repeatFrequency && (
-                                <span className={styles.repeatBadge}>
-                                    🔁 {draggedTask.repeatFrequency}
-                                </span>
+                        <div style={{ opacity: 0, pointerEvents: 'none' }}>
+                            <Circle size={16} />
+                        </div>
+                        <div className={styles.taskCardContent}>
+                            {draggedTask.parentContent && (
+                                <div className={styles.parentContent}>{draggedTask.parentContent}</div>
                             )}
+                            <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
+                                {renderMarkdownLinks(draggedTask.content)}
+                                {draggedTask.repeatFrequency && (
+                                    <span className={styles.repeatBadge}>
+                                        🔁 {draggedTask.repeatFrequency}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ) : null}

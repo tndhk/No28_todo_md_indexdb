@@ -47,6 +47,13 @@
     transform: translateY(0);
 }
 
+.navButton.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
 .weekRange {
     font-weight: 700;
     font-size: 1.2rem;
@@ -61,7 +68,7 @@
 
 .weekGrid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     padding: 1.5rem;
     min-width: 100%;
@@ -150,6 +157,9 @@
     will-change: transform, box-shadow, border-color;
     position: relative;
     overflow: hidden;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
 }
 
 .taskCard::before {
@@ -193,12 +203,38 @@
     background: rgba(15, 23, 42, 0.4);
 }
 
+.taskCheckbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    color: var(--foreground-muted);
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.taskCheckbox:hover {
+    color: var(--primary);
+}
+
+.taskCheckbox .checked {
+    color: var(--success);
+}
+
+.taskCardContent {
+    flex: 1;
+    overflow: hidden;
+}
+
 .taskContent {
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
     line-height: 1.5;
     color: var(--foreground);
-    padding-left: 0.5rem;
 }
 
 .taskStatus {
