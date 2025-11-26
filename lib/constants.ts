@@ -61,6 +61,12 @@ export const MAX_DUE_TAG_COUNT = 1;
 export const MAX_REPEAT_TAG_COUNT = 1;
 
 /**
+ * Maximum nesting level for tasks
+ * Prevents stack overflow and excessive rendering complexity
+ */
+export const MAX_TASK_NESTING_LEVEL = 10;
+
+/**
  * File lock timeout in milliseconds
  * Prevents deadlocks by forcing release after this duration
  */

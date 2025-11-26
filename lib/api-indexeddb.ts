@@ -12,6 +12,7 @@ import {
     validateTaskStatus,
     validateDueDate,
 } from './validation';
+import { MAX_TASK_NESTING_LEVEL } from './constants';
 
 export class ApiError extends Error {
     public readonly statusCode: number;
@@ -462,9 +463,20 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 .replace(/#repeat:(?:daily|weekly|monthly)/g, '')
                 .trim();
 
+            // SECURITY: Validate task content to prevent XSS
+            const contentValidation = validateTaskContent(taskContent);
+            if (!contentValidation.valid) {
+                throw new ApiError(`Line ${index + 1}: ${contentValidation.error}`, 400);
+            }
+
             // Handle nesting
             while (taskStack.length > 0 && taskStack[taskStack.length - 1].indent >= indent) {
                 taskStack.pop();
+            }
+
+            // SECURITY: Prevent deep nesting (DoS protection)
+            if (taskStack.length >= MAX_TASK_NESTING_LEVEL) {
+                throw new ApiError(`Line ${index + 1}: Maximum nesting level (${MAX_TASK_NESTING_LEVEL}) exceeded`, 400);
             }
 
             let parentContent: string | undefined;
