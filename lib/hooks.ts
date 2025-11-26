@@ -49,6 +49,13 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
     const syncProjectToSupabase = async (project: Project) => {
       if (isSyncingRef.current) return;
+      
+      console.log('[Sync] Attempting upsert:', { 
+        projectId: project.id, 
+        userId, 
+        title: project.title 
+      });
+
       isSyncingRef.current = true;
       setSyncStatus('syncing');
 
