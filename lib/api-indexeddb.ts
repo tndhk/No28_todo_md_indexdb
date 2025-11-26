@@ -134,7 +134,8 @@ export async function addTask(
     dueDate?: string,
     parentLineNumber?: number, // Ignored in IndexedDB mode
     repeatFrequency?: RepeatFrequency,
-    parentId?: string // Use this instead of parentLineNumber
+    parentId?: string, // Use this instead of parentLineNumber
+    scheduledDate?: string
 ): Promise<Project[]> {
     try {
         // SECURITY: Validate task content
@@ -157,7 +158,15 @@ export async function addTask(
             }
         }
 
-        await idb.addTask(projectId, groupId, content, status, dueDate, parentId, repeatFrequency);
+        // SECURITY: Validate scheduled date if provided
+        if (scheduledDate) {
+            const scheduledDateValidation = validateDueDate(scheduledDate);
+            if (!scheduledDateValidation.valid) {
+                throw new ApiError(scheduledDateValidation.error || 'Invalid scheduled date', 400);
+            }
+        }
+
+        await idb.addTask(projectId, groupId, content, status, dueDate, parentId, repeatFrequency, scheduledDate);
         return await idb.getAllProjects();
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -177,6 +186,7 @@ export async function updateTask(
     updates: {
         content?: string;
         status?: TaskStatus;
+        scheduledDate?: string;
         dueDate?: string;
         repeatFrequency?: RepeatFrequency;
     },
@@ -200,6 +210,14 @@ export async function updateTask(
             const statusValidation = validateTaskStatus(updates.status);
             if (!statusValidation.valid) {
                 throw new ApiError(statusValidation.error || 'Invalid task status', 400);
+            }
+        }
+
+        // SECURITY: Validate scheduled date if provided
+        if (updates.scheduledDate !== undefined) {
+            const scheduledDateValidation = validateDueDate(updates.scheduledDate);
+            if (!scheduledDateValidation.valid) {
+                throw new ApiError(scheduledDateValidation.error || 'Invalid scheduled date', 400);
             }
         }
 
@@ -341,9 +359,10 @@ function serializeProjectToMarkdown(project: Project): string {
     function writeTasks(tasks: Task[], indent: string = '') {
         tasks.forEach(task => {
             const checkbox = task.status === 'done' ? '[x]' : '[ ]';
+            const scheduledTag = task.scheduledDate ? ` #do:${task.scheduledDate}` : '';
             const dueTag = task.dueDate ? ` #due:${task.dueDate}` : '';
             const repeatTag = task.repeatFrequency ? ` #repeat:${task.repeatFrequency}` : '';
-            lines.push(`${indent}- ${checkbox} ${task.content}${dueTag}${repeatTag}`);
+            lines.push(`${indent}- ${checkbox} ${task.content}${scheduledTag}${dueTag}${repeatTag}`);
 
             if (task.subtasks.length > 0) {
                 writeTasks(task.subtasks, indent + '    ');
@@ -428,6 +447,9 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             const textContent = taskMatch[3];
 
             // Extract metadata
+            const scheduledMatch = textContent.match(/#do:(\d{4}-\d{2}-\d{2})/);
+            const scheduledDate = scheduledMatch ? scheduledMatch[1] : undefined;
+
             const dueMatch = textContent.match(/#due:(\d{4}-\d{2}-\d{2})/);
             const dueDate = dueMatch ? dueMatch[1] : undefined;
 
@@ -435,6 +457,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             const repeatFrequency = repeatMatch ? (repeatMatch[1] as RepeatFrequency) : undefined;
 
             const taskContent = textContent
+                .replace(/#do:\d{4}-\d{2}-\d{2}/g, '')
                 .replace(/#due:\d{4}-\d{2}-\d{2}/g, '')
                 .replace(/#repeat:(?:daily|weekly|monthly)/g, '')
                 .trim();
@@ -454,6 +477,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 id: `${projectId}-${Date.now()}-${crypto.randomUUID()}`,
                 content: taskContent,
                 status: isChecked ? 'done' : 'todo',
+                scheduledDate,
                 dueDate,
                 repeatFrequency,
                 subtasks: [],

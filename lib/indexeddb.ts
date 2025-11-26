@@ -232,7 +232,8 @@ export async function addTask(
     status: TaskStatus = 'todo',
     dueDate?: string,
     parentId?: string,
-    repeatFrequency?: RepeatFrequency
+    repeatFrequency?: RepeatFrequency,
+    scheduledDate?: string
 ): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
@@ -244,6 +245,7 @@ export async function addTask(
         id: generateTaskId(projectId),
         content,
         status,
+        scheduledDate,
         dueDate,
         repeatFrequency,
         subtasks: [],
@@ -273,7 +275,7 @@ export async function addTask(
 export async function updateTask(
     projectId: string,
     taskId: string,
-    updates: Partial<Pick<Task, 'content' | 'status' | 'dueDate' | 'repeatFrequency'>>
+    updates: Partial<Pick<Task, 'content' | 'status' | 'scheduledDate' | 'dueDate' | 'repeatFrequency'>>
 ): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
@@ -285,6 +287,7 @@ export async function updateTask(
     // Apply updates
     if (updates.content !== undefined) task.content = updates.content;
     if (updates.status !== undefined) task.status = updates.status;
+    if (updates.scheduledDate !== undefined) task.scheduledDate = updates.scheduledDate;
     if (updates.dueDate !== undefined) task.dueDate = updates.dueDate;
     if (updates.repeatFrequency !== undefined) task.repeatFrequency = updates.repeatFrequency;
 
@@ -351,6 +354,11 @@ export async function handleRecurringTask(
     // Mark current task as done
     task.status = 'done';
 
+    // Calculate next scheduled date
+    const nextScheduledDate = task.scheduledDate
+        ? calculateNextDueDate(task.scheduledDate, task.repeatFrequency)
+        : undefined;
+
     // Calculate next due date
     const nextDueDate = task.dueDate
         ? calculateNextDueDate(task.dueDate, task.repeatFrequency)
@@ -361,6 +369,7 @@ export async function handleRecurringTask(
         id: generateTaskId(projectId),
         content: task.content,
         status: 'todo',
+        scheduledDate: nextScheduledDate,
         dueDate: nextDueDate,
         repeatFrequency: task.repeatFrequency,
         subtasks: [],

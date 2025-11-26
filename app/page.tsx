@@ -559,7 +559,7 @@ export default function Home() {
     }
   };
 
-  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string) => {
+  const handleModalAdd = async (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string, scheduledDate?: string) => {
     if (!currentProjectId) return;
 
     const targetGroupId = groupId || modalGroupId || currentGroupId;
@@ -577,7 +577,8 @@ export default function Home() {
         dueDate,
         undefined, // parentLineNumber (not used in IndexedDB mode)
         repeatFrequency,
-        modalParentTask?.id // parentId for IndexedDB mode
+        modalParentTask?.id, // parentId for IndexedDB mode
+        scheduledDate
       );
       setProjects(updatedProjects);
       showToast('success', 'Task added successfully');

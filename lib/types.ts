@@ -5,7 +5,8 @@ export interface Task {
     id: string;
     content: string;
     status: TaskStatus;
-    dueDate?: string; // YYYY-MM-DD
+    scheduledDate?: string; // YYYY-MM-DD - When to do the task
+    dueDate?: string; // YYYY-MM-DD - Task deadline
     repeatFrequency?: RepeatFrequency; // For recurring tasks
     subtasks: Task[];
     parentId?: string;
