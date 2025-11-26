@@ -785,6 +785,7 @@ export default function Home() {
         </main>
 
         <AddTaskModal
+          key={`${modalGroupId || 'no-group'}-${modalParentTask?.id || 'no-parent'}`}
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
