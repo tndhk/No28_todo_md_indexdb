@@ -207,8 +207,14 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         const currentDisplayDate = task?.scheduledDate || task?.dueDate;
         if (!task || currentDisplayDate === newDate) return;
 
-        // Update task scheduled date (prioritize scheduledDate over dueDate)
-        onTaskUpdate(task, { scheduledDate: newDate });
+        // Update the appropriate date field:
+        // - If task has scheduledDate, update scheduledDate
+        // - If task only has dueDate, update dueDate to maintain user's original intent
+        if (task.scheduledDate) {
+            onTaskUpdate(task, { scheduledDate: newDate });
+        } else {
+            onTaskUpdate(task, { dueDate: newDate });
+        }
     };
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
