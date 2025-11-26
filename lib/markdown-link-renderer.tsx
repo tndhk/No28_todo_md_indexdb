@@ -19,21 +19,35 @@ export function renderMarkdownLinks(text: string): React.ReactNode {
     // Add the link
     const linkText = match[1];
     const url = match[2];
-    parts.push(
-      <a
-        key={`link-${match.index}`}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          color: '#0066cc',
-          textDecoration: 'underline',
-          cursor: 'pointer',
-        }}
-      >
-        {linkText}
-      </a>
-    );
+    
+    // SECURITY: Check for dangerous protocols
+    // We only allow http, https, mailto, tel, and relative paths
+    const isSafeUrl = /^(https?:\/\/|mailto:|tel:|\/|\.\/|\.\.\/)/i.test(url);
+
+    if (isSafeUrl) {
+      parts.push(
+        <a
+          key={`link-${match.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#0066cc',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+          }}
+        >
+          {linkText}
+        </a>
+      );
+    } else {
+      // Render unsafe links as plain text with a warning
+      parts.push(
+        <span key={`unsafe-${match.index}`} style={{ color: 'red' }} title="Unsafe link blocked">
+          {linkText} [BLOCKED]
+        </span>
+      );
+    }
 
     lastIndex = match.index + match[0].length;
   }
