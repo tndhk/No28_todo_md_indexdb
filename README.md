@@ -13,6 +13,7 @@ A modern task management application with **IndexedDB browser storage** and **Ma
 - 📦 Subtask support - organize complex tasks into nested subtasks
 - 🎨 Clean, modern UI - built with React and Next.js
 - 💾 Offline-first - all data stored locally in your browser
+- ☁️ Cloud Sync - optional synchronization across devices using Supabase
 
 ## Quick Start
 
@@ -111,6 +112,19 @@ All tasks are stored in **IndexedDB**, a client-side database built into modern 
 - Tasks use generated IDs: `{projectId}-{timestamp}-{random}`
 - Markdown format is preserved for import/export compatibility
 
+### Cloud Synchronization (Optional)
+The application supports optional cloud synchronization using **Supabase**:
+
+- **Authentication** - Secure user authentication via Supabase Auth
+- **Real-time Backup** - Changes are automatically synced to the cloud
+- **Multi-device** - Access your tasks from any device
+- **Conflict Resolution** - Last-write-wins strategy for data consistency
+
+**Sync Architecture:**
+- Local changes are debounced (2s) and pushed to Supabase
+- On load, newer remote data automatically updates local IndexedDB
+- Data is stored as JSONB in PostgreSQL for flexibility
+
 ## Data Format
 
 Tasks can be viewed and edited as Markdown:
@@ -199,6 +213,10 @@ Optional configuration (create `.env.local` if needed):
 # Optional: NextAuth configuration (if authentication is enabled)
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
+
+# Optional: Supabase Configuration (for Cloud Sync)
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 # Optional: Application settings
 DATA_DIR=./data

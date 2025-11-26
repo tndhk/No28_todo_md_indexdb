@@ -208,6 +208,36 @@ const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '
 ```
 これによりUTCオフセットの問題(タスクが間違った日付に表示される)を防ぐ。
 
+### 同期アーキテクチャ (Supabase)
+
+**概要:**
+Supabaseをバックエンドとして使用し、複数のデバイス間でデータを同期します。
+
+**コンポーネント:**
+- **Auth:** `lib/auth-context.tsx` - Supabase Authを使用したユーザー認証
+- **Sync Logic:** `lib/hooks.ts` (`useSync`) - 同期ロジックのコア実装
+- **Database:** Supabase PostgreSQL (`projects` テーブル)
+
+**データフロー:**
+1. **アップストリーム (Local -> Cloud):**
+   - ローカルでの変更は `queueProjectForSync` をトリガー
+   - 変更はデバウンス(2秒)され、Supabaseに `upsert` される
+   - データは `jsonb` カラムにプロジェクト全体として保存される
+
+2. **ダウンストリーム (Cloud -> Local):**
+   - 初回ロード時にユーザーの全プロジェクトを取得
+   - `updated_at` タイムスタンプを比較
+   - **Last Write Wins (最終書き込み優先):** リモートの方が新しい場合、ローカルのIndexedDBを更新
+
+**スキーマ (推論):**
+- テーブル: `projects`
+- カラム:
+  - `id`: Primary Key
+  - `user_id`: ユーザーID
+  - `title`: プロジェクトタイトル
+  - `data`: JSONB (プロジェクトデータ全体)
+  - `updated_at`: 最終更新日時
+
 ## 一般的な開発タスク
 
 ### アプリケーションの実行
