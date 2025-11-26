@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const client = supabase;
     if (!client) {
-      setLoading(false);
       return;
     }
 

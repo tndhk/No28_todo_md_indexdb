@@ -75,7 +75,7 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
           throw error;
         }
         setSyncStatus('synced');
-      } catch (error) {
+      } catch (_error) {
         setSyncStatus('error');
       } finally {
         isSyncingRef.current = false;
