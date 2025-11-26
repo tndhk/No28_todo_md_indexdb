@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Project } from '@/lib/types';
-import { FileText, LayoutList, Calendar, Code, Plus } from 'lucide-react';
+import { FileText, LayoutList, Calendar, Code, Plus, Menu, X } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -27,6 +27,7 @@ export default function Sidebar({
     const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const handleDoubleClick = (project: Project) => {
         setEditingProjectId(project.id);
@@ -71,31 +72,56 @@ export default function Sidebar({
     };
 
     return (
-        <aside className={styles.sidebar}>
-            <div className={styles.header}>
-                <h1 className={styles.title}>Markdown Todo</h1>
-            </div>
+        <>
+            <button
+                className={styles.mobileMenuButton}
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle menu"
+            >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
 
-            <nav className={styles.nav}>
+            {isMobileMenuOpen && (
+                <div
+                    className={styles.mobileOverlay}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            <aside className={`${styles.sidebar} ${isMobileMenuOpen ? styles.mobileOpen : ''}`}>
+                <div className={styles.header}>
+                    <h1 className={styles.title}>Markdown Todo</h1>
+                </div>
+
+                <nav className={styles.nav}>
                 <div className={styles.navSection}>
                     <h2 className={styles.navTitle}>Views</h2>
                     <button
                         className={`${styles.navItem} ${currentView === 'tree' ? styles.active : ''}`}
-                        onClick={() => onViewChange('tree')}
+                        onClick={() => {
+                            onViewChange('tree');
+                            setIsMobileMenuOpen(false);
+                        }}
                     >
                         <LayoutList size={18} />
                         <span>Tree</span>
                     </button>
                     <button
                         className={`${styles.navItem} ${currentView === 'weekly' ? styles.active : ''}`}
-                        onClick={() => onViewChange('weekly')}
+                        onClick={() => {
+                            onViewChange('weekly');
+                            setIsMobileMenuOpen(false);
+                        }}
                     >
                         <Calendar size={18} />
                         <span>Calendar</span>
                     </button>
                     <button
                         className={`${styles.navItem} ${currentView === 'md' ? styles.active : ''}`}
-                        onClick={() => onViewChange('md')}
+                        onClick={() => {
+                            onViewChange('md');
+                            setIsMobileMenuOpen(false);
+                        }}
                     >
                         <Code size={18} />
                         <span>Markdown</span>
@@ -133,7 +159,10 @@ export default function Sidebar({
                                 />
                             ) : (
                                 <span
-                                    onClick={() => onProjectSelect(project.id)}
+                                    onClick={() => {
+                                        onProjectSelect(project.id);
+                                        setIsMobileMenuOpen(false);
+                                    }}
                                     onDoubleClick={() => handleDoubleClick(project)}
                                     className={styles.projectTitle}
                                 >
@@ -145,5 +174,6 @@ export default function Sidebar({
                 </div>
             </nav>
         </aside>
+        </>
     );
 }
