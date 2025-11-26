@@ -66,15 +66,14 @@ export default function Home() {
   // Use authenticated user ID. If undefined, sync will not run.
   const userId = user?.id;
 
+  const handleRemoteProjectsFetched = useCallback((fetchedProjects: Project[]) => {
+    setProjects(fetchedProjects);
+    setCurrentProjectId(prev => prev || (fetchedProjects.length > 0 ? fetchedProjects[0].id : undefined));
+  }, []);
+
   const { syncStatus, queueProjectForSync } = useSync({
     userId: userId,
-    onRemoteProjectsFetched: (fetchedProjects) => {
-      setProjects(fetchedProjects);
-      // Ensure currentProjectId is set if it was null
-      if (fetchedProjects.length > 0 && !currentProjectId) {
-        setCurrentProjectId(fetchedProjects[0].id);
-      }
-    },
+    onRemoteProjectsFetched: handleRemoteProjectsFetched,
   });
 
   // Register the global project change callback for IndexedDB
