@@ -110,7 +110,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const allTasks = useMemo(() => getAllTasks(tasks), [tasks]);
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
     const [displayDate, setDisplayDate] = useState(new Date());
-    const [weekdayOnly, setWeekdayOnly] = useState(false);
+    const [weekdayOnly, setWeekdayOnly] = useState(true);
 
     // Optimization: Create task ID lookup map to avoid repeated linear searches - O(1) lookup instead of O(n)
     const taskMap = useMemo(() => {
