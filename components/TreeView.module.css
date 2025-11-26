@@ -364,3 +364,63 @@
     border: 1px solid var(--primary);
     z-index: 999;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .taskRow {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .taskContent {
+        font-size: 0.875rem;
+    }
+
+    .dragHandle {
+        opacity: 0.3;
+    }
+
+    .actions {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .groupActions {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .actionButton,
+    .groupActionButton {
+        padding: 0.4rem;
+    }
+
+    .groupName {
+        font-size: 1rem;
+    }
+
+    .subtasks {
+        margin-left: 1rem;
+    }
+
+    .editContainer {
+        flex-wrap: wrap;
+    }
+
+    .editInput {
+        width: 100%;
+        font-size: 0.875rem;
+        padding: 0.5rem;
+    }
+
+    .editDateInput,
+    .editRepeatSelect {
+        font-size: 0.8rem;
+    }
+
+    .dueDate,
+    .repeatBadge {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.4rem;
+    }
+}
