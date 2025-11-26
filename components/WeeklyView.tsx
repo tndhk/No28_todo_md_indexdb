@@ -4,7 +4,6 @@ import { Task } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners, useDraggable } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Circle, CheckCircle2 } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './WeeklyView.module.css';
