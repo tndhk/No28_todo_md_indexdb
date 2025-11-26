@@ -312,6 +312,7 @@ export default function Home() {
     try {
       const updatedProjects = await apiUpdateTask(currentProjectId, task.lineNumber, {
         content: updates.content,
+        scheduledDate: updates.scheduledDate,
         dueDate: updates.dueDate,
         status: updates.status,
         repeatFrequency: updates.repeatFrequency,
