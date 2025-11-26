@@ -141,6 +141,7 @@ export async function updateProject(
             const putRequest = store.put(updatedProject);
 
             putRequest.onsuccess = () => {
+                console.log('[IDB] Project updated:', updatedProject.id);
                 if (projectChangeCallback) {
                     projectChangeCallback(updatedProject);
                 }
@@ -546,6 +547,7 @@ export async function moveTaskToGroup(
  */
 export async function initializeSampleData(): Promise<void> {
     const projects = await getAllProjects();
+    console.log('[IDB] Checking sample data initialization. Projects count:', projects.length);
 
     // Only initialize if database is empty
     if (projects.length > 0) return;
