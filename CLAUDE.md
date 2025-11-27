@@ -14,6 +14,29 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 - Remark (Markdown parsing and serialization)
 - Supabase (optional cloud sync)
 
+## Development Environment Setup
+
+**IMPORTANT: Before running any commands, always run `npm install` first!**
+
+This project requires dependencies to be installed before you can build, run, or test. Common issues:
+
+1. **Missing dependencies error** (`next: not found`, etc.):
+   - **Solution:** Run `npm install` before any other commands
+   - This happens because `node_modules/` is not committed to git
+
+2. **Lint errors are common**:
+   - TypeScript/ESLint may report errors after code changes
+   - Always run `npm run lint` to check for issues
+   - Fix lint errors before committing
+
+**Recommended workflow:**
+```bash
+npm install           # ALWAYS run this first in a fresh environment
+npm run dev           # Then start development server
+npm run lint          # Check for lint errors before committing
+npm run build         # Verify production build works
+```
+
 ## Architecture
 
 ### Data Storage & Format
