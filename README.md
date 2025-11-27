@@ -1,4 +1,4 @@
-# Markdown Todo
+# Momentum
 
 A modern task management application with **IndexedDB browser storage** and **Markdown format support**. This app provides an intuitive interface for managing tasks and subtasks with multiple views for different workflows.
 
@@ -9,7 +9,9 @@ A modern task management application with **IndexedDB browser storage** and **Ma
 - 📅 Calendar View - tasks organized by due date for weekly planning
 - ✅ Inline task editing - double-click to edit, auto-save on blur
 - 🏷️ Due date support - plan tasks with deadline tracking
+- 🔔 Scheduled dates - distinguish between when to work on a task vs. its deadline
 - 🔁 Recurring tasks - automatically recreate daily, weekly, or monthly tasks
+- ⏱️ Pomodoro Timer - integrated work/break cycles with notifications
 - 📦 Subtask support - organize complex tasks into nested subtasks
 - 🎨 Clean, modern UI - built with React and Next.js
 - 💾 Offline-first - all data stored locally in your browser
@@ -87,6 +89,7 @@ Tasks can be viewed and edited as Markdown:
 ## Todo
 - [ ] Buy groceries #due:2025-11-23
 - [ ] Take vitamins #due:2025-11-20 #repeat:daily
+- [ ] Work on project #do:2025-11-22 #due:2025-11-30
 - [ ] Read a book
     - [ ] Chapter 1 #due:2025-11-20
     - [ ] Chapter 2 #due:2025-11-21
@@ -94,7 +97,8 @@ Tasks can be viewed and edited as Markdown:
 
 **Format Rules:**
 - Tasks use checkboxes: `[ ]` (incomplete) or `[x]` (complete)
-- Due dates: `#due:YYYY-MM-DD` (inline tag)
+- Due dates: `#due:YYYY-MM-DD` (deadline/target completion date)
+- Scheduled date: `#do:YYYY-MM-DD` (when to start working on the task)
 - Repeat frequency: `#repeat:daily`, `#repeat:weekly`, or `#repeat:monthly` (inline tag)
 - Nesting: 4 spaces per indentation level (Max 10 levels)
 

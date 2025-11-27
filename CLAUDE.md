@@ -19,10 +19,12 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 ### Data Storage & Format
 
 **IndexedDB Structure (Primary):**
-- Database: `MarkdownTodoDB`
+- Database: `MarkdownTodoDB` (v2 schema with migration support)
 - Object Store: `projects` (keyPath: `id`)
-- Each project contains: `id`, `title`, `tasks[]`, `path`
-- Tasks are nested objects with generated IDs: `{projectId}-{timestamp}-{random}`
+- Each project contains: `id`, `title`, `groups[]`, `path`, `updated_at`
+- Groups are status containers (Todo, Doing, Done) with custom name support
+- Tasks are nested objects within groups with generated IDs: `{projectId}-{timestamp}-{random}`
+- Tasks support nested subtasks (max 10 levels deep)
 
 **Supabase Structure (Sync):**
 - **Auth:** Google OAuth via `lib/auth-context.tsx`
@@ -37,6 +39,7 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 ## Todo
 - [ ] Buy groceries #due:2025-11-23
 - [ ] Take vitamins #due:2025-11-20 #repeat:daily
+- [ ] Work on feature #do:2025-11-22 #due:2025-11-30
 - [ ] Read a book
     - [ ] Chapter 1 #due:2025-11-20
     - [ ] Chapter 2 #due:2025-11-21
@@ -48,6 +51,11 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 ## Done
 - [x] Setup project #due:2025-11-19
 ```
+
+**Supported Tags:**
+- `#due:YYYY-MM-DD` - Deadline/target completion date
+- `#do:YYYY-MM-DD` - Scheduled date (when to start working on task)
+- `#repeat:daily|weekly|monthly` - Recurring task frequency
 
 ### Security Guidelines
 
@@ -68,37 +76,75 @@ This is a Next.js 16 task management application called "Markdown Todo" that sto
 ### Core Modules
 
 **[lib/types.ts](lib/types.ts)** - Type definitions:
-- `Task` - Represents individual tasks
-- `Project` - Contains all tasks and metadata
+- `Task` - Represents individual tasks with subtask support
+- `Group` - Status containers (Todo, Doing, Done)
+- `Project` - Contains groups, tasks, and metadata
 - `TaskStatus` - 'todo' | 'doing' | 'done'
+- `RepeatFrequency` - 'daily' | 'weekly' | 'monthly'
 
 **[lib/indexeddb.ts](lib/indexeddb.ts)** - IndexedDB operations:
-- CRUD operations for projects and tasks
+- CRUD operations for projects, groups, and tasks
+- Schema v2 migration support (v1 → v2)
 - `setProjectChangeCallback()` - Triggers sync on data changes
+- `handleRecurringTask()` - Manages recurring task creation
 
 **[lib/hooks.ts](lib/hooks.ts)** - Custom Hooks:
-- `useSync` - Orchestrates bi-directional sync with Supabase
-- `pullProjectsFromSupabase` - Downloads newer remote data
-- `syncProjectToSupabase` - Uploads local changes (debounced)
+- `useSync()` - Orchestrates bi-directional sync with Supabase
+- `useAuth()` - Google OAuth authentication via Supabase
+- `pullProjectsFromSupabase()` - Downloads newer remote data
+- `syncProjectToSupabase()` - Uploads local changes (debounced 2s)
 
 **[lib/api-indexeddb.ts](lib/api-indexeddb.ts)** - Client-side API:
 - **Note:** Replaces HTTP API routes in IndexedDB mode
 - `fetchProjects()` - Loads from IndexedDB
-- `saveRawMarkdown()` - Parses and saves markdown (with validation)
+- `saveRawMarkdown()` - Parses and saves markdown with validation
+- Handles markdown parsing with tag extraction (#due:, #do:, #repeat:)
+
+**[lib/validation.ts](lib/validation.ts)** - Input validation:
+- XSS prevention with dangerous pattern detection
+- ReDoS prevention with regex quantifier limits
+- Task content length validation
+- Early rejection before regex processing
+- Used by `parseMarkdownToProject()` for security
 
 ### UI Components
 
 **[app/page.tsx](app/page.tsx)** - Main container:
-- Manages projects and view state
-- Initializes sync via `useSync`
+- Manages projects, groups, and view state
+- Initializes bi-directional sync via `useSync`
+- Handles search, view switching (Tree/Weekly/Markdown)
+- Toggle for hiding completed tasks with localStorage persistence
 
 **[components/TreeView.tsx](components/TreeView.tsx)** - Tree view:
-- Hierarchical task list with drag-and-drop
-- Auto-save on blur
+- Hierarchical task list with dnd-kit drag-and-drop
+- Inline editing with auto-save on blur
+- Recursive task rendering with subtask support
+- Cross-group task movement
 
 **[components/WeeklyView.tsx](components/WeeklyView.tsx)** - Calendar view:
-- Weekly organization by due date
+- Weekly organization by due/scheduled dates
 - Uses local timezone for accurate date display
+- Drag-and-drop date synchronization
+- Click-to-open Pomodoro timer integration
+- Task completion toggle with visual feedback
+
+**[components/PomodoroModal.tsx](components/PomodoroModal.tsx)** - Pomodoro timer:
+- Work/break cycle management (default 25min/5min)
+- Desktop notifications on cycle completion
+- Timer controls (play, pause, reset)
+- Settings dialog for duration customization
+- Integrated with WeeklyView task clicks
+
+**[components/MDView.tsx](components/MDView.tsx)** - Markdown editor:
+- Raw markdown editing with syntax view
+- Auto-save on blur
+- Real-time markdown parsing
+
+**[components/Sidebar.tsx](components/Sidebar.tsx)** - Navigation:
+- Project selector with creation
+- View switcher (Tree/Weekly/Markdown)
+- Mobile hamburger menu
+- Responsive layout
 
 ## Common Development Tasks
 
@@ -128,6 +174,15 @@ The markdown format stores nesting via indentation (4 spaces):
 
 - **Task IDs:** Generated: `{projectId}-{timestamp}-{random}`. Stable and unique.
 - **Timezone Handling:** Calendar View uses local timezone to prevent UTC offset issues.
+- **Scheduled vs. Due Dates:**
+  - `#due:` is the deadline/target completion date
+  - `#do:` is when to start working on the task
+  - Both sync to WeeklyView for calendar organization
+- **Recurring Tasks:** Automatically recreate on next cycle when marked complete
+- **Search:** Case-insensitive recursive search across task content and subtasks
+- **Mobile Responsiveness:** Hamburger menu, responsive grid layouts, touch-friendly controls
 - **IndexedDB Storage:** Primary storage. Data is persistent but local.
-- **Cloud Sync:** Optional. Uses Supabase `projects` table (JSONB).
-- **Security:** stored XSS and DoS protections are implemented in the markdown parser/renderer.
+- **Cloud Sync:** Optional. Uses Supabase `projects` table (JSONB) with Last-Write-Wins conflict resolution.
+- **Security:** Stored XSS and DoS protections are implemented in the markdown parser/renderer.
+- **Pomodoro Integration:** Click any task in WeeklyView to start a Pomodoro session
+- **Database Schema:** v2 supports groups/status organization (v1→v2 migration included)
