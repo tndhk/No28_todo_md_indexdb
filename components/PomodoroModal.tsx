@@ -98,7 +98,7 @@ export default function PomodoroModal({ task, onClose }: PomodoroModalProps) {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [state, mode, workDuration, breakDuration, sendNotification]);
+    }, [state, mode, workDuration, breakDuration]);
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
