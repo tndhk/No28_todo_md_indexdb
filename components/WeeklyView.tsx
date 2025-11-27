@@ -6,6 +6,7 @@ import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSe
 import { useDroppable } from '@dnd-kit/core';
 import { Circle, CheckCircle2 } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
+import PomodoroModal from './PomodoroModal';
 import styles from './WeeklyView.module.css';
 
 interface WeeklyViewProps {
@@ -24,7 +25,15 @@ function getAllTasks(tasks: Task[]): Task[] {
     return result;
 }
 
-function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task: Task, updates: Partial<Task>) => void }) {
+function DraggableTask({
+    task,
+    onTaskUpdate,
+    onTaskClick
+}: {
+    task: Task;
+    onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
+    onTaskClick: (task: Task) => void;
+}) {
     const {
         attributes,
         listeners,
@@ -45,6 +54,17 @@ function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task
         });
     };
 
+    const handleCardClick = (e: React.MouseEvent) => {
+        // Don't open modal if clicking on checkbox
+        if ((e.target as HTMLElement).closest(`.${styles.taskCheckbox}`)) {
+            return;
+        }
+        // Only open modal on direct click (not during drag)
+        if (!isDragging) {
+            onTaskClick(task);
+        }
+    };
+
     return (
         <div
             ref={setNodeRef}
@@ -52,6 +72,7 @@ function DraggableTask({ task, onTaskUpdate }: { task: Task; onTaskUpdate: (task
             {...attributes}
             {...listeners}
             className={`${styles.taskCard} ${styles[task.status]}`}
+            onClick={handleCardClick}
         >
             <button
                 className={styles.taskCheckbox}
@@ -110,6 +131,7 @@ function DroppableDay({
 export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const allTasks = useMemo(() => getAllTasks(tasks), [tasks]);
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [displayDate, setDisplayDate] = useState(new Date());
     const [weekdayOnly, setWeekdayOnly] = useState(true);
 
@@ -290,7 +312,12 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
 
                                 <DroppableDay dateStr={dateStr}>
                                     {dayTasks.map((task) => (
-                                        <DraggableTask key={task.id} task={task} onTaskUpdate={onTaskUpdate} />
+                                        <DraggableTask
+                                            key={task.id}
+                                            task={task}
+                                            onTaskUpdate={onTaskUpdate}
+                                            onTaskClick={setSelectedTask}
+                                        />
                                     ))}
                                     {dayTasks.length === 0 && (
                                         <div className={styles.emptyState}>Drop tasks here</div>
@@ -324,6 +351,13 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                     </div>
                 ) : null}
             </DragOverlay>
+
+            {selectedTask && (
+                <PomodoroModal
+                    task={selectedTask}
+                    onClose={() => setSelectedTask(null)}
+                />
+            )}
         </DndContext>
     );
 }
