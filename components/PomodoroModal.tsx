@@ -22,6 +22,8 @@ export default function PomodoroModal({ task, onClose }: PomodoroModalProps) {
     const [state, setState] = useState<TimerState>('idle');
     const [timeLeft, setTimeLeft] = useState(DEFAULT_WORK_DURATION);
     const [showSettings, setShowSettings] = useState(false);
+    const [startTime, setStartTime] = useState<number | null>(null);
+    const [elapsedBeforePause, setElapsedBeforePause] = useState(0);
 
     // Settings
     const [workDuration, setWorkDuration] = useState(DEFAULT_WORK_DURATION);
@@ -46,14 +48,22 @@ export default function PomodoroModal({ task, onClose }: PomodoroModalProps) {
 
     const startTimer = useCallback(() => {
         setState('running');
+        setStartTime(Date.now());
     }, []);
 
     const pauseTimer = useCallback(() => {
+        if (startTime !== null) {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            setElapsedBeforePause(prev => prev + elapsed);
+        }
         setState('paused');
-    }, []);
+        setStartTime(null);
+    }, [startTime]);
 
     const resetTimer = useCallback(() => {
         setState('idle');
+        setStartTime(null);
+        setElapsedBeforePause(0);
         setTimeLeft(mode === 'work' ? workDuration : breakDuration);
     }, [mode, workDuration, breakDuration]);
 
@@ -61,44 +71,53 @@ export default function PomodoroModal({ task, onClose }: PomodoroModalProps) {
         const newMode = mode === 'work' ? 'break' : 'work';
         setMode(newMode);
         setState('idle');
+        setStartTime(null);
+        setElapsedBeforePause(0);
         setTimeLeft(newMode === 'work' ? workDuration : breakDuration);
     }, [mode, workDuration, breakDuration]);
 
     // Timer countdown effect
     useEffect(() => {
-        if (state !== 'running') return;
+        if (state !== 'running' || startTime === null) return;
+
+        const targetDuration = mode === 'work' ? workDuration : breakDuration;
 
         const interval = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    // Timer completed
-                    setState('idle');
-                    const completedMode = mode;
-                    const nextMode = mode === 'work' ? 'break' : 'work';
+            const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+            const totalElapsed = elapsedBeforePause + currentElapsed;
+            const remaining = targetDuration - totalElapsed;
 
-                    // Send notification
-                    if (completedMode === 'work') {
-                        sendNotification(
-                            '作業時間終了！',
-                            '休憩時間を取りましょう。'
-                        );
-                    } else {
-                        sendNotification(
-                            '休憩時間終了！',
-                            '作業に戻りましょう。'
-                        );
-                    }
+            if (remaining <= 0) {
+                // Timer completed
+                setState('idle');
+                setStartTime(null);
+                setElapsedBeforePause(0);
+                const completedMode = mode;
+                const nextMode = mode === 'work' ? 'break' : 'work';
 
-                    // Auto-switch to next mode
-                    setMode(nextMode);
-                    return nextMode === 'work' ? workDuration : breakDuration;
+                // Send notification
+                if (completedMode === 'work') {
+                    sendNotification(
+                        '作業時間終了！',
+                        '休憩時間を取りましょう。'
+                    );
+                } else {
+                    sendNotification(
+                        '休憩時間終了！',
+                        '作業に戻りましょう。'
+                    );
                 }
-                return prev - 1;
-            });
-        }, 1000);
+
+                // Auto-switch to next mode
+                setMode(nextMode);
+                setTimeLeft(nextMode === 'work' ? workDuration : breakDuration);
+            } else {
+                setTimeLeft(remaining);
+            }
+        }, 100); // Update more frequently for smoother display
 
         return () => clearInterval(interval);
-    }, [state, mode, workDuration, breakDuration]);
+    }, [state, mode, workDuration, breakDuration, startTime, elapsedBeforePause, sendNotification]);
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
