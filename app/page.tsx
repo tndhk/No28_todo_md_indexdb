@@ -5,7 +5,7 @@ import { Eye, EyeOff, Search, X, Cloud, CloudOff, LogIn, LogOut } from 'lucide-r
 import { Project, Task, TaskStatus, RepeatFrequency } from '@/lib/types';
 import { useDebounce, useSync } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth-context';
-import { setProjectChangeCallback } from '@/lib/indexeddb'; // Import setProjectChangeCallback
+import { setProjectChangeCallback, getProjectById } from '@/lib/indexeddb'; // Import setProjectChangeCallback and getProjectById
 import { updateTaskInTree, deleteTaskFromTree, filterDoneTasks, filterTasksBySearch } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import TreeView from '@/components/TreeView';
@@ -623,9 +623,22 @@ export default function Home() {
     }
   };
 
-  const handleMDSaveSuccess = useCallback(() => {
-    // no-op, sync will update
-  }, []);
+  const handleMDSaveSuccess = useCallback(async () => {
+    // Reload the updated project from IndexedDB and update React state
+    if (!currentProjectId) return;
+
+    try {
+      const updatedProject = await getProjectById(currentProjectId);
+      if (updatedProject) {
+        setProjects(prev => prev.map(project =>
+          project.id === currentProjectId ? updatedProject : project
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to reload project after MD save:', error);
+      showToast('error', 'Failed to refresh view after save');
+    }
+  }, [currentProjectId, showToast]);
 
   const handleMDError = useCallback((message: string) => {
     showToast('error', message);
