@@ -3,8 +3,8 @@ import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
-  title: 'Markdown Todo - IndexedDB Edition',
-  description: 'A local-first todo app powered by IndexedDB',
+  title: 'Momentum - Your Local-First Task Companion',
+  description: 'Stay organized, stay focused. All your tasks, all the time.',
 }
 
 export default function RootLayout({

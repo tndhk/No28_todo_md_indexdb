@@ -90,7 +90,7 @@ export default function Sidebar({
 
             <aside className={`${styles.sidebar} ${isMobileMenuOpen ? styles.mobileOpen : ''}`}>
                 <div className={styles.header}>
-                    <h1 className={styles.title}>Markdown Todo</h1>
+                    <h1 className={styles.title}>Momentum</h1>
                 </div>
 
                 <nav className={styles.nav}>
