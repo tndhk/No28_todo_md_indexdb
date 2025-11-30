@@ -24,7 +24,7 @@ import {
 } from '@/lib/api-indexeddb';
 import * as idb from '@/lib/indexeddb';
 import * as validation from '@/lib/validation';
-import { Project, Task, Group, TaskStatus } from '@/lib/types';
+import { Project, Task, TaskStatus } from '@/lib/types';
 
 // Mock the idb module
 jest.mock('@/lib/indexeddb');

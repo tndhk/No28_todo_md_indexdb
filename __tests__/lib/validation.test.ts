@@ -45,12 +45,14 @@ describe('validateProjectId', () => {
 
     // Test: Null/undefined
     it('should reject null project ID', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateProjectId(null as any);
         expect(result.valid).toBe(false);
     });
 
     // Test: Non-string
     it('should reject non-string project ID', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateProjectId(123 as any);
         expect(result.valid).toBe(false);
     });
@@ -184,6 +186,7 @@ describe('validateProjectTitle', () => {
 
     // Test: Non-string
     it('should reject non-string title', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateProjectTitle(123 as any);
         expect(result.valid).toBe(false);
     });
@@ -265,6 +268,7 @@ describe('validateTaskContent', () => {
 
     // Test: Non-string
     it('should reject non-string content', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateTaskContent(123 as any);
         expect(result.valid).toBe(false);
     });
@@ -334,12 +338,14 @@ describe('validateTaskStatus', () => {
 
     // Test: Null status
     it('should reject null status', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateTaskStatus(null as any);
         expect(result.valid).toBe(false);
     });
 
     // Test: Non-string status
     it('should reject non-string status', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateTaskStatus(123 as any);
         expect(result.valid).toBe(false);
     });
@@ -354,6 +360,7 @@ describe('validateDueDate', () => {
 
     // Test: Optional - null
     it('should accept null due date (optional)', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateDueDate(null as any);
         expect(result.valid).toBe(true);
     });
@@ -432,6 +439,7 @@ describe('validateDueDate', () => {
 
     // Test: Non-string date
     it('should reject non-string date', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validateDueDate(20251231 as any);
         expect(result.valid).toBe(false);
     });

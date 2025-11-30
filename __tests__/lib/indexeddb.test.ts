@@ -5,15 +5,20 @@
  */
 
 import * as idb from '@/lib/indexeddb';
-import { Project, Task, Group, TaskStatus } from '@/lib/types';
+import { Project, Task } from '@/lib/types';
 
 // Mock IndexedDB API
 class MockIDBRequest {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     result: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     error: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onsuccess: ((this: IDBRequest<any>, ev: Event) => any) | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onerror: ((this: IDBRequest<any>, ev: Event) => any) | null = null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(result?: any, error?: any) {
         this.result = result;
         this.error = error;
@@ -21,18 +26,21 @@ class MockIDBRequest {
 
     triggerSuccess() {
         if (this.onsuccess) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.onsuccess.call(this, new Event('success') as any);
         }
     }
 
     triggerError() {
         if (this.onerror) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.onerror.call(this, new Event('error') as any);
         }
     }
 }
 
 class MockIDBObjectStore {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: Map<string, any> = new Map();
     name: string;
     keyPath: string = 'id';
@@ -41,6 +49,7 @@ class MockIDBObjectStore {
         this.name = name;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     add(value: any): MockIDBRequest {
         const request = new MockIDBRequest();
         if (this.data.has(value.id)) {
@@ -54,6 +63,7 @@ class MockIDBObjectStore {
         return request;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     put(value: any): MockIDBRequest {
         const request = new MockIDBRequest();
         this.data.set(value.id, value);
@@ -62,6 +72,7 @@ class MockIDBObjectStore {
         return request;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     get(key: any): MockIDBRequest {
         const request = new MockIDBRequest();
         request.result = this.data.get(key) || null;
@@ -76,6 +87,7 @@ class MockIDBObjectStore {
         return request;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete(key: any): MockIDBRequest {
         const request = new MockIDBRequest();
         this.data.delete(key);
@@ -83,7 +95,8 @@ class MockIDBObjectStore {
         return request;
     }
 
-    createIndex(name: string, keyPath: string): any {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createIndex(_name: string, _keyPath: string): any {
         return this;
     }
 }
@@ -111,7 +124,7 @@ class MockIDBDatabase {
         this.objectStores.set('projects', new MockIDBObjectStore('projects'));
     }
 
-    transaction(storeNames: string | string[], mode: string): MockIDBTransaction {
+    transaction(storeNames: string | string[], _mode: string): MockIDBTransaction {
         const tx = new MockIDBTransaction();
         const names = Array.isArray(storeNames) ? storeNames : [storeNames];
         for (const name of names) {
@@ -120,7 +133,8 @@ class MockIDBDatabase {
         return tx;
     }
 
-    createObjectStore(name: string, options?: any): MockIDBObjectStore {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createObjectStore(name: string, _options?: any): MockIDBObjectStore {
         const store = new MockIDBObjectStore(name);
         this.objectStores.set(name, store);
         return store;
@@ -131,7 +145,7 @@ let mockDB: MockIDBDatabase;
 
 // Mock global indexedDB
 const mockIndexedDB = {
-    open: jest.fn((dbName: string, version: number) => {
+    open: jest.fn((_dbName: string, _version: number) => {
         const request = new MockIDBRequest();
         mockDB = new MockIDBDatabase();
         request.result = mockDB;
@@ -226,7 +240,7 @@ describe('getProjectById', () => {
         // Add project directly to mock DB
         const tx = mockDB.transaction('projects', 'readwrite');
         const store = tx.objectStore('projects');
-        const addRequest = store.add(project);
+        store.add(project);
 
         await flushPromises();
 

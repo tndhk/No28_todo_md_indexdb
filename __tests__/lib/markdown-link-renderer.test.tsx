@@ -5,7 +5,6 @@
  */
 
 import React from 'react';
-import { render } from '@testing-library/react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 
 // Helper to extract text content from React nodes
@@ -90,7 +89,6 @@ describe('renderMarkdownLinks', () => {
 
             // When no regex match, lastIndex stays 0, so entire text is added to parts
             // Therefore parts.length > 0, returning array instead of plain text
-            const arr = result as React.ReactNode[];
             expect(Array.isArray(result)).toBe(true);
             expect(getTextContent(result)).toBe(input);
         });

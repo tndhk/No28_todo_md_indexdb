@@ -240,6 +240,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
@@ -268,6 +269,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -329,6 +331,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -370,6 +373,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -421,6 +425,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([localProject]);
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
@@ -465,6 +470,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([localProject]);
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
@@ -496,6 +502,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]); // Empty local
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
@@ -524,6 +531,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -556,6 +564,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([mockRemoteProject]);
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
@@ -584,6 +593,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -608,6 +618,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
 
@@ -623,6 +634,7 @@ describe('useSync', () => {
     // Test: No Supabase client
     it('should skip sync when Supabase client is unavailable', () => {
         const mockCallback = jest.fn();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = null;
 
         const { result } = renderHook(() =>
@@ -656,6 +668,7 @@ describe('useSync', () => {
             }),
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
         (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
