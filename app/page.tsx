@@ -17,6 +17,8 @@ import CreateProjectModal from '@/components/CreateProjectModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { triggerConfetti } from '@/lib/confetti';
+import OfflineIndicator from '@/components/OfflineIndicator';
+import InstallPrompt from '@/components/InstallPrompt';
 import {
   fetchProjects,
   createProject,
@@ -681,6 +683,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
+      <OfflineIndicator />
       <div className={styles.container}>
         <ErrorBoundary>
           <Sidebar
@@ -826,6 +829,7 @@ export default function Home() {
 
         <Toast toasts={toasts} onDismiss={dismissToast} />
       </div>
+      <InstallPrompt />
     </ErrorBoundary>
   );
 }
