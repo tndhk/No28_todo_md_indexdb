@@ -148,3 +148,49 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
   return { syncStatus, queueProjectForSync };
 }
+
+/**
+ * Hook to detect online/offline status
+ * Returns true when online, false when offline
+ */
+export function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      console.log('[Network] Online');
+      setIsOnline(true);
+    };
+
+    const handleOffline = () => {
+      console.log('[Network] Offline');
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Also listen for Service Worker sync requests
+    const handleSyncRequest = () => {
+      console.log('[Network] Sync requested by Service Worker');
+      // Trigger a manual sync check
+      if (navigator.onLine) {
+        window.dispatchEvent(new CustomEvent('force-sync'));
+      }
+    };
+
+    window.addEventListener('sw-sync-requested', handleSyncRequest);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('sw-sync-requested', handleSyncRequest);
+    };
+  }, []);
+
+  return isOnline;
+}
