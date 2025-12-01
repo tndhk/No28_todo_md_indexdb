@@ -344,11 +344,12 @@ describe('updateProject', () => {
         expect(result?.title).toBe('Updated Title');
     });
 
-    // Test: Error when project not found
-    it('should throw error when updating non-existent project', async () => {
+    // Test: Graceful handling when project not found (race condition fix)
+    it('should resolve successfully when updating non-existent project', async () => {
+        // After race condition fix, updateProject should resolve instead of throwing
         await expect(
             idb.updateProject({ id: 'nonexistent', title: 'Title' })
-        ).rejects.toThrow('Project not found');
+        ).resolves.toBeUndefined();
     });
 
     // Test: Callback is triggered on update
