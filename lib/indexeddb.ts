@@ -117,7 +117,7 @@ export async function addProject(
  * Put (upsert) a project - inserts if new, updates if exists
  * This is safer for sync operations as it doesn't require the project to pre-exist
  */
-export async function putProject(project: Omit<Project, 'path'>): Promise<void> {
+export async function putProject(project: Omit<Project, 'path'>, options?: { silent?: boolean }): Promise<void> {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
@@ -128,8 +128,9 @@ export async function putProject(project: Omit<Project, 'path'>): Promise<void> 
         const request = store.put(projectWithPath);
 
         request.onsuccess = () => {
-            console.log('[IDB] Project upserted:', projectWithPath.id);
-            if (projectChangeCallback) {
+            console.log('[IDB] Project upserted:', projectWithPath.id, options?.silent ? '(silent)' : '');
+            // Only trigger callback if not silent (prevents sync loops during downstream sync)
+            if (projectChangeCallback && !options?.silent) {
                 projectChangeCallback(projectWithPath);
             }
             resolve();

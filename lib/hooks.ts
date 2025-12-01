@@ -123,9 +123,9 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
           if (!localProject || remoteUpdatedAt > localUpdatedAt) {
             projectsToUpdateLocally.push(remoteProject);
-            // Use putProject which handles both insert and update atomically
-            // This prevents "Project not found" errors from race conditions
-            await putProject(remoteProject);
+            // Use putProject with silent option to prevent sync loops
+            // Silent mode prevents triggering projectChangeCallback which would queue for upstream sync
+            await putProject(remoteProject, { silent: true });
           }
           // If local is newer, it will be synced upstream by queueProjectForSync when it triggers
         }
