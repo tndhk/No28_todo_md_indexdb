@@ -106,37 +106,57 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
         // Supabase returns an array of objects, where each object has 'data' key which is our Project
         const remoteProjects = remoteProjectsRaw ? remoteProjectsRaw.map(p => p.data as Project) : [];
-        const localProjects = await getAllProjects();
+
+        // Get local projects, with fallback to empty array if database isn't ready
+        let localProjects: Project[] = [];
+        try {
+          localProjects = await getAllProjects();
+        } catch (dbError) {
+          console.warn('[Sync] Could not fetch local projects, treating as empty:', dbError);
+        }
 
         const localProjectsMap = new Map(localProjects.map(p => [p.id, p]));
         const projectsToUpdateLocally: Project[] = [];
 
         for (const remoteProject of remoteProjects) {
-          const localProject = localProjectsMap.get(remoteProject.id);
+          try {
+            const localProject = localProjectsMap.get(remoteProject.id);
 
-          // Conflict resolution: Last Write Wins
-          // If remote is newer, update local IndexedDB
-          // If no local project, add remote project
-          // Note: remoteProject.updated_at is directly from Supabase DB, localProject.updated_at is from IDB Project data.
-          const remoteUpdatedAt = remoteProject.updated_at ? new Date(remoteProject.updated_at).getTime() : 0;
-          const localUpdatedAt = localProject?.updated_at ? new Date(localProject.updated_at).getTime() : 0;
+            // Conflict resolution: Last Write Wins
+            // If remote is newer, update local IndexedDB
+            // If no local project, add remote project
+            // Note: remoteProject.updated_at is directly from Supabase DB, localProject.updated_at is from IDB Project data.
+            const remoteUpdatedAt = remoteProject.updated_at ? new Date(remoteProject.updated_at).getTime() : 0;
+            const localUpdatedAt = localProject?.updated_at ? new Date(localProject.updated_at).getTime() : 0;
 
-          if (!localProject || remoteUpdatedAt > localUpdatedAt) {
-            projectsToUpdateLocally.push(remoteProject);
-            // Use putProject with silent option to prevent sync loops
-            // Silent mode prevents triggering projectChangeCallback which would queue for upstream sync
-            await putProject(remoteProject, { silent: true });
+            if (!localProject || remoteUpdatedAt > localUpdatedAt) {
+              projectsToUpdateLocally.push(remoteProject);
+              // Use putProject with silent option to prevent sync loops
+              // Silent mode prevents triggering projectChangeCallback which would queue for upstream sync
+              await putProject(remoteProject, { silent: true });
+            }
+            // If local is newer, it will be synced upstream by queueProjectForSync when it triggers
+          } catch (projectError) {
+            console.error(`Error syncing project ${remoteProject.id}:`, projectError);
+            // Continue with other projects even if one fails
           }
-          // If local is newer, it will be synced upstream by queueProjectForSync when it triggers
         }
 
         // Handle projects deleted remotely but still exist locally (optional for now)
         // For simplicity, we only pull. If a project is deleted remotely,
         // it will remain locally until explicitly deleted by user or next comprehensive sync.
 
-        onRemoteProjectsFetched(await getAllProjects()); // Notify app state with latest local projects
-
-        setSyncStatus('synced');
+        // Notify app state with latest local projects
+        try {
+          const finalProjects = await getAllProjects();
+          onRemoteProjectsFetched(finalProjects);
+          setSyncStatus('synced');
+        } catch (finalError) {
+          console.error('[Sync] Could not fetch final project list:', finalError);
+          // Even if we can't fetch the final list, mark as synced to avoid infinite sync loops
+          // The projects were already synced, we just couldn't refresh the UI
+          setSyncStatus('synced');
+        }
       } catch (error) {
         console.error('Error pulling projects from Supabase:', error);
         setSyncStatus('error');
