@@ -8,6 +8,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+declare global {
+  interface Window {
+    deferredInstallPrompt?: BeforeInstallPromptEvent
+  }
+}
+
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
@@ -19,23 +25,46 @@ export default function InstallPrompt() {
       return
     }
 
-    // Listen for the beforeinstallprompt event
+    // Listen for custom event dispatched when prompt is captured
+    const handleInstallPromptReady = () => {
+      console.log('[PWA] Install prompt ready (via custom event)')
+      if (window.deferredInstallPrompt) {
+        setDeferredPrompt(window.deferredInstallPrompt)
+        setTimeout(() => {
+          setShowPrompt(true)
+        }, 2000)
+      }
+    }
+
+    // Listen for the beforeinstallprompt event (backup in case early capture didn't work)
     const handler = (e: Event) => {
-      // Prevent the default browser install prompt
       e.preventDefault()
-      console.log('[PWA] Install prompt ready')
+      console.log('[PWA] Install prompt ready (direct event)')
 
       setDeferredPrompt(e as BeforeInstallPromptEvent)
+      window.deferredInstallPrompt = e as BeforeInstallPromptEvent
 
       // Show our custom install prompt after a delay
       setTimeout(() => {
         setShowPrompt(true)
-      }, 3000) // Show after 3 seconds
+      }, 2000)
     }
 
+    window.addEventListener('install-prompt-ready', handleInstallPromptReady)
     window.addEventListener('beforeinstallprompt', handler)
 
+    // Check if the event was already captured before this component mounted
+    // Trigger the event handler if so
+    if (window.deferredInstallPrompt) {
+      console.log('[PWA] Using pre-captured install prompt')
+      // Trigger via setTimeout to avoid direct setState in effect body
+      setTimeout(() => {
+        handleInstallPromptReady()
+      }, 0)
+    }
+
     return () => {
+      window.removeEventListener('install-prompt-ready', handleInstallPromptReady)
       window.removeEventListener('beforeinstallprompt', handler)
     }
   }, [])

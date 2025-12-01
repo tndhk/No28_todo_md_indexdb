@@ -2,12 +2,36 @@
 
 import { useEffect } from 'react'
 
+// Global variable to store the install prompt event if it fires before React mounts
+declare global {
+  interface Window {
+    deferredInstallPrompt?: BeforeInstallPromptEvent
+  }
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export default function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       console.log('[SW] Service Workers not supported')
       return
     }
+
+    // Capture beforeinstallprompt event early (before InstallPrompt component mounts)
+    const captureInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      console.log('[PWA] Install prompt captured early')
+      window.deferredInstallPrompt = e as BeforeInstallPromptEvent
+      // Dispatch custom event so InstallPrompt component can listen
+      window.dispatchEvent(new CustomEvent('install-prompt-ready'))
+    }
+
+    // Listen for install prompt event
+    window.addEventListener('beforeinstallprompt', captureInstallPrompt)
 
     // Register Service Worker
     const registerServiceWorker = async () => {
@@ -60,7 +84,6 @@ export default function ServiceWorkerRegister() {
       registerServiceWorker()
     } else {
       window.addEventListener('load', registerServiceWorker)
-      return () => window.removeEventListener('load', registerServiceWorker)
     }
 
     // Listen for messages from Service Worker
@@ -74,6 +97,11 @@ export default function ServiceWorkerRegister() {
       }
     })
 
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeinstallprompt', captureInstallPrompt)
+      window.removeEventListener('load', registerServiceWorker)
+    }
   }, [])
 
   return null

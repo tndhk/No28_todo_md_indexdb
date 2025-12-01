@@ -436,7 +436,7 @@ describe('useSync', () => {
 
         // Wait for sync
         await waitFor(() => {
-            expect(idb.putProject).toHaveBeenCalledWith(remoteProject);
+            expect(idb.putProject).toHaveBeenCalledWith(remoteProject, { silent: true });
         });
     });
 
@@ -513,7 +513,7 @@ describe('useSync', () => {
 
         // New project should be added
         await waitFor(() => {
-            expect(idb.putProject).toHaveBeenCalledWith(mockRemoteProject);
+            expect(idb.putProject).toHaveBeenCalledWith(mockRemoteProject, { silent: true });
         });
     });
 
