@@ -114,6 +114,31 @@ export async function addProject(
 }
 
 /**
+ * Put (upsert) a project - inserts if new, updates if exists
+ * This is safer for sync operations as it doesn't require the project to pre-exist
+ */
+export async function putProject(project: Omit<Project, 'path'>): Promise<void> {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
+        const store = transaction.objectStore(PROJECTS_STORE);
+
+        // Add path as empty string for IndexedDB mode
+        const projectWithPath: Project = { ...project, path: '' };
+        const request = store.put(projectWithPath);
+
+        request.onsuccess = () => {
+            console.log('[IDB] Project upserted:', projectWithPath.id);
+            if (projectChangeCallback) {
+                projectChangeCallback(projectWithPath);
+            }
+            resolve();
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
  * Update an existing project
  * @performance Fixed async Promise constructor anti-pattern
  */

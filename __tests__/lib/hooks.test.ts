@@ -243,7 +243,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -428,7 +428,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([localProject]);
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -436,7 +436,7 @@ describe('useSync', () => {
 
         // Wait for sync
         await waitFor(() => {
-            expect(idb.updateProject).toHaveBeenCalledWith(remoteProject);
+            expect(idb.putProject).toHaveBeenCalledWith(remoteProject);
         });
     });
 
@@ -473,7 +473,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([localProject]);
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -482,7 +482,7 @@ describe('useSync', () => {
         // Wait for potential update
         await waitFor(
             () => {
-                expect(idb.updateProject).not.toHaveBeenCalled();
+                expect(idb.putProject).not.toHaveBeenCalled();
             },
             { timeout: 1000 }
         );
@@ -505,7 +505,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]); // Empty local
-        (idb.addProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -513,7 +513,7 @@ describe('useSync', () => {
 
         // New project should be added
         await waitFor(() => {
-            expect(idb.addProject).toHaveBeenCalledWith(mockRemoteProject);
+            expect(idb.putProject).toHaveBeenCalledWith(mockRemoteProject);
         });
     });
 
@@ -567,7 +567,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([mockRemoteProject]);
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -671,7 +671,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
-        (idb.addProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.putProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -679,7 +679,7 @@ describe('useSync', () => {
 
         // Should handle large number of projects
         await waitFor(() => {
-            expect(idb.addProject).toHaveBeenCalled();
+            expect(idb.putProject).toHaveBeenCalled();
         });
     });
 });
