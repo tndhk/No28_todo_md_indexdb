@@ -505,7 +505,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]); // Empty local
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.addProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -513,7 +513,7 @@ describe('useSync', () => {
 
         // New project should be added
         await waitFor(() => {
-            expect(idb.updateProject).toHaveBeenCalledWith(mockRemoteProject);
+            expect(idb.addProject).toHaveBeenCalledWith(mockRemoteProject);
         });
     });
 
@@ -671,7 +671,7 @@ describe('useSync', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseModule.supabase as any) = mockSupabase;
         (idb.getAllProjects as jest.Mock).mockResolvedValue([]);
-        (idb.updateProject as jest.Mock).mockResolvedValue(undefined);
+        (idb.addProject as jest.Mock).mockResolvedValue(undefined);
 
         renderHook(() =>
             useSync({ userId: 'user123', onRemoteProjectsFetched: mockCallback })
@@ -679,7 +679,7 @@ describe('useSync', () => {
 
         // Should handle large number of projects
         await waitFor(() => {
-            expect(idb.updateProject).toHaveBeenCalled();
+            expect(idb.addProject).toHaveBeenCalled();
         });
     });
 });

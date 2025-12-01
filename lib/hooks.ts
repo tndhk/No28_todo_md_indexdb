@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Project } from './types';
 import { supabase } from './supabase';
-import { getAllProjects, updateProject as updateProjectInIdb } from './indexeddb';
+import { getAllProjects, updateProject as updateProjectInIdb, addProject } from './indexeddb';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
@@ -123,7 +123,12 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
           if (!localProject || remoteUpdatedAt > localUpdatedAt) {
             projectsToUpdateLocally.push(remoteProject);
-            await updateProjectInIdb(remoteProject);
+            // If project doesn't exist locally, add it; otherwise update it
+            if (!localProject) {
+              await addProject(remoteProject);
+            } else {
+              await updateProjectInIdb(remoteProject);
+            }
           }
           // If local is newer, it will be synced upstream by queueProjectForSync when it triggers
         }
