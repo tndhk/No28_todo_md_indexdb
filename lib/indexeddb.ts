@@ -158,7 +158,10 @@ export async function updateProject(
         getRequest.onsuccess = () => {
             const existingProject = getRequest.result;
             if (!existingProject) {
-                reject(new Error('Project not found'));
+                // RACE CONDITION FIX: During sync, a project might not exist yet or have been replaced
+                // Instead of throwing an error, log a warning and skip the update gracefully
+                console.warn('[IDB] Project not found during update, skipping:', project.id);
+                resolve(); // Resolve successfully to prevent errors from propagating
                 return;
             }
 
