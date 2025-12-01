@@ -105,16 +105,22 @@ This project uses React 19 with strict ESLint rules. **ALWAYS run `npm run lint`
 2. **Run lint** → `npm run lint`
 3. **Fix all errors** → Address ESLint/TypeScript issues
 4. **Run build** → `npm run build` to verify production build
-5. **Test locally** → Verify functionality works
+5. **Run tests** → `npm test` to verify all tests pass
 6. **Commit** → Only after all checks pass
+
+**⚠️ CRITICAL: NEVER skip tests before committing!**
+- Always run `npm test` after code changes, especially when modifying core logic
+- Test failures in CI/CD are expensive and delay delivery
+- If tests fail locally, fix them before committing
 
 **Example workflow:**
 ```bash
-# After implementing a new component
+# After implementing a new component or fixing a bug
 npm run lint          # Check for errors
 npm run build         # Verify build succeeds
+npm test              # REQUIRED: Run all tests
 git add .
-git commit -m "..."   # Only if lint and build succeed
+git commit -m "..."   # Only if lint, build, AND tests all succeed
 ```
 
 ### PWA-Specific Considerations
