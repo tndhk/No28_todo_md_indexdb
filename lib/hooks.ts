@@ -176,13 +176,45 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
             const remoteUpdatedAt = remoteProject.updated_at ? new Date(remoteProject.updated_at).getTime() : 0;
             const localUpdatedAt = localProject?.updated_at ? new Date(localProject.updated_at).getTime() : 0;
 
-            if (!localProject || remoteUpdatedAt > localUpdatedAt) {
+            if (!localProject) {
+              console.log('[Sync] New remote project detected, adding locally:', {
+                projectId: remoteProject.id,
+                title: remoteProject.title,
+                remoteTimestamp: remoteProject.updated_at,
+              });
               projectsToUpdateLocally.push(remoteProject);
               // Use putProject with silent option to prevent sync loops
               // Silent mode prevents triggering projectChangeCallback which would queue for upstream sync
               await putProject(remoteProject, { silent: true });
+            } else if (remoteUpdatedAt > localUpdatedAt) {
+              console.log('[Sync] Remote project is newer, updating locally:', {
+                projectId: remoteProject.id,
+                title: remoteProject.title,
+                localTimestamp: localProject.updated_at,
+                remoteTimestamp: remoteProject.updated_at,
+                timeDiffMs: remoteUpdatedAt - localUpdatedAt,
+              });
+              projectsToUpdateLocally.push(remoteProject);
+              // Use putProject with silent option to prevent sync loops
+              // Silent mode prevents triggering projectChangeCallback which would queue for upstream sync
+              await putProject(remoteProject, { silent: true });
+            } else if (localUpdatedAt > remoteUpdatedAt) {
+              console.log('[Sync] Local project is newer, keeping local version:', {
+                projectId: remoteProject.id,
+                title: remoteProject.title,
+                localTimestamp: localProject.updated_at,
+                remoteTimestamp: remoteProject.updated_at,
+                timeDiffMs: localUpdatedAt - remoteUpdatedAt,
+              });
+              // Local is newer, skip update. Will be synced upstream by queueProjectForSync when it triggers
+            } else {
+              console.log('[Sync] Local and remote timestamps are equal, keeping local:', {
+                projectId: remoteProject.id,
+                title: remoteProject.title,
+                timestamp: localProject.updated_at,
+              });
+              // Timestamps are equal, no update needed
             }
-            // If local is newer, it will be synced upstream by queueProjectForSync when it triggers
           } catch (projectError) {
             console.error(`Error syncing project ${remoteProject.id}:`, projectError);
             // Continue with other projects even if one fails
