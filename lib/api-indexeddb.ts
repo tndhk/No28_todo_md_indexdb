@@ -50,7 +50,7 @@ export async function fetchProjects(): Promise<Project[]> {
  */
 export async function createProject(title: string): Promise<Project> {
     try {
-        // SECURITY: Validate project title
+        // Validate project title
         const titleValidation = validateProjectTitle(title);
         if (!titleValidation.valid) {
             throw new ApiError(titleValidation.error || 'Invalid project title', 400);
@@ -62,7 +62,7 @@ export async function createProject(title: string): Promise<Project> {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '') || 'untitled';
 
-        // SECURITY: Validate generated project ID
+        // Validate generated project ID
         const idValidation = validateProjectId(id);
         if (!idValidation.valid) {
             throw new ApiError(idValidation.error || 'Invalid project ID', 400);
@@ -104,7 +104,7 @@ export async function createProject(title: string): Promise<Project> {
  */
 export async function updateProjectTitle(projectId: string, title: string): Promise<void> {
     try {
-        // SECURITY: Validate project title
+        // Validate project title
         const titleValidation = validateProjectTitle(title);
         if (!titleValidation.valid) {
             throw new ApiError(titleValidation.error || 'Invalid project title', 400);
@@ -140,19 +140,19 @@ export async function addTask(
     scheduledDate?: string
 ): Promise<Project[]> {
     try {
-        // SECURITY: Validate task content
+        // Validate task content
         const contentValidation = validateTaskContent(content);
         if (!contentValidation.valid) {
             throw new ApiError(contentValidation.error || 'Invalid task content', 400);
         }
 
-        // SECURITY: Validate task status
+        // Validate task status
         const statusValidation = validateTaskStatus(status);
         if (!statusValidation.valid) {
             throw new ApiError(statusValidation.error || 'Invalid task status', 400);
         }
 
-        // SECURITY: Validate due date if provided
+        // Validate due date if provided
         if (dueDate) {
             const dueDateValidation = validateDueDate(dueDate);
             if (!dueDateValidation.valid) {
@@ -160,7 +160,7 @@ export async function addTask(
             }
         }
 
-        // SECURITY: Validate scheduled date if provided
+        // Validate scheduled date if provided
         if (scheduledDate) {
             const scheduledDateValidation = validateDueDate(scheduledDate);
             if (!scheduledDateValidation.valid) {
@@ -199,7 +199,7 @@ export async function updateTask(
             throw new ApiError('Task ID is required for IndexedDB mode', 400);
         }
 
-        // SECURITY: Validate content if provided
+        // Validate content if provided
         if (updates.content !== undefined) {
             const contentValidation = validateTaskContent(updates.content);
             if (!contentValidation.valid) {
@@ -207,7 +207,7 @@ export async function updateTask(
             }
         }
 
-        // SECURITY: Validate status if provided
+        // Validate status if provided
         if (updates.status !== undefined) {
             const statusValidation = validateTaskStatus(updates.status);
             if (!statusValidation.valid) {
@@ -215,7 +215,7 @@ export async function updateTask(
             }
         }
 
-        // SECURITY: Validate scheduled date if provided
+        // Validate scheduled date if provided
         if (updates.scheduledDate !== undefined) {
             const scheduledDateValidation = validateDueDate(updates.scheduledDate);
             if (!scheduledDateValidation.valid) {
@@ -223,7 +223,7 @@ export async function updateTask(
             }
         }
 
-        // SECURITY: Validate due date if provided
+        // Validate due date if provided
         if (updates.dueDate !== undefined) {
             const dueDateValidation = validateDueDate(updates.dueDate);
             if (!dueDateValidation.valid) {
@@ -349,10 +349,7 @@ export async function saveRawMarkdown(projectId: string, content: string): Promi
             updated_at: new Date().toISOString(),
         };
 
-        console.log('[Sync] Saving raw markdown:', {
-            projectId,
-            newTimestamp: projectToSave.updated_at,
-        });
+
 
         await idb.updateProject(projectToSave);
     } catch (error) {
@@ -478,7 +475,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 .replace(/#repeat:(?:daily|weekly|monthly)/g, '')
                 .trim();
 
-            // SECURITY: Validate task content to prevent XSS
+            // Validate task content to prevent XSS
             const contentValidation = validateTaskContent(taskContent);
             if (!contentValidation.valid) {
                 throw new ApiError(`Line ${index + 1}: ${contentValidation.error}`, 400);
@@ -489,7 +486,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 taskStack.pop();
             }
 
-            // SECURITY: Prevent deep nesting (DoS protection)
+            // Prevent deep nesting (DoS protection)
             if (taskStack.length >= MAX_TASK_NESTING_LEVEL) {
                 throw new ApiError(`Line ${index + 1}: Maximum nesting level (${MAX_TASK_NESTING_LEVEL}) exceeded`, 400);
             }
@@ -500,7 +497,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             }
 
             const newTask: Task = {
-                // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() and substring() instead of Math.random() and substr()
+                // Use crypto.randomUUID()
                 id: `${projectId}-${Date.now()}-${crypto.randomUUID()}`,
                 content: taskContent,
                 status: isChecked ? 'done' : 'todo',

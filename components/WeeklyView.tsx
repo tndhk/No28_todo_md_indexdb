@@ -143,7 +143,6 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const [displayDate, setDisplayDate] = useState(new Date());
     const [weekdayOnly, setWeekdayOnly] = useState(true);
 
-    // Optimization: Create task ID lookup map to avoid repeated linear searches - O(1) lookup instead of O(n)
     const taskMap = useMemo(() => {
         const map = new Map<string, Task>();
         allTasks.forEach(task => map.set(task.id, task));
@@ -234,26 +233,14 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
 
         const currentDisplayDate = task.scheduledDate || task.dueDate;
 
-        console.log('[WeeklyView] Drag ended:', {
-            taskId,
-            taskContent: task.content,
-            currentScheduledDate: task.scheduledDate,
-            currentDueDate: task.dueDate,
-            currentDisplayDate,
-            newDate,
-            willUpdate: currentDisplayDate !== newDate
-        });
-
         if (currentDisplayDate === newDate) return;
 
         // Update the appropriate date field:
         // - If task has scheduledDate, update scheduledDate
         // - If task only has dueDate, update dueDate to maintain user's original intent
         if (task.scheduledDate) {
-            console.log('[WeeklyView] Updating scheduledDate to:', newDate);
             onTaskUpdate(task, { scheduledDate: newDate });
         } else {
-            console.log('[WeeklyView] Updating dueDate to:', newDate);
             onTaskUpdate(task, { dueDate: newDate });
         }
     };
@@ -266,7 +253,6 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             collisionDetection={closestCorners}
             onDragEnd={handleDragEnd}
             onDragStart={(event) => {
-                // Use map for O(1) lookup instead of O(n) find
                 const task = taskMap.get(event.active.id as string);
                 if (task) setDraggedTask(task);
             }}
