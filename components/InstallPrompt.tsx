@@ -27,7 +27,6 @@ export default function InstallPrompt() {
 
     // Listen for custom event dispatched when prompt is captured
     const handleInstallPromptReady = () => {
-      console.log('[PWA] Install prompt ready (via custom event)')
       if (window.deferredInstallPrompt) {
         setDeferredPrompt(window.deferredInstallPrompt)
         setTimeout(() => {
@@ -39,7 +38,6 @@ export default function InstallPrompt() {
     // Listen for the beforeinstallprompt event (backup in case early capture didn't work)
     const handler = (e: Event) => {
       e.preventDefault()
-      console.log('[PWA] Install prompt ready (direct event)')
 
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       window.deferredInstallPrompt = e as BeforeInstallPromptEvent
@@ -56,7 +54,6 @@ export default function InstallPrompt() {
     // Check if the event was already captured before this component mounted
     // Trigger the event handler if so
     if (window.deferredInstallPrompt) {
-      console.log('[PWA] Using pre-captured install prompt')
       // Trigger via setTimeout to avoid direct setState in effect body
       setTimeout(() => {
         handleInstallPromptReady()
@@ -79,7 +76,6 @@ export default function InstallPrompt() {
 
     // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice
-    console.log(`[PWA] User response: ${outcome}`)
 
     // Clear the deferredPrompt
     setDeferredPrompt(null)

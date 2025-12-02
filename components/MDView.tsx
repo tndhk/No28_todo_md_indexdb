@@ -34,8 +34,8 @@ const Editor = memo(({ state, onContentChange, onKeyDown, textareaRef }: {
 ), (prevProps, nextProps) => {
     // Custom comparison: only rerender if content changes
     return prevProps.state.content === nextProps.state.content &&
-           prevProps.onContentChange === nextProps.onContentChange &&
-           prevProps.onKeyDown === nextProps.onKeyDown;
+        prevProps.onContentChange === nextProps.onContentChange &&
+        prevProps.onKeyDown === nextProps.onKeyDown;
 });
 Editor.displayName = 'Editor';
 
@@ -54,7 +54,7 @@ export default function MDView({ projectId, onSaveSuccess, onError }: MDViewProp
 
         async function loadContent() {
             setLoading(true);
-            console.log('[MDView] Loading content for projectId:', projectId);
+            setLoading(true);
             try {
                 const rawContent = await fetchRawMarkdown(projectId);
                 if (isMounted) {
