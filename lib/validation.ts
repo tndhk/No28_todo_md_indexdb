@@ -213,3 +213,55 @@ export function sanitizeContent(content: string): string {
         .replace(/#repeat:(daily|weekly|monthly)/g, '')
         .trim();
 }
+
+/**
+ * Validates a project object from remote source (e.g., Supabase)
+ * Ensures all required fields exist and are of correct types
+ */
+export function validateRemoteProject(project: unknown): { valid: boolean; error?: string } {
+    // Check if project exists
+    if (!project || typeof project !== 'object') {
+        return { valid: false, error: 'Project is not a valid object' };
+    }
+
+    const p = project as Record<string, unknown>;
+
+    // Check required fields
+    if (!p.id || typeof p.id !== 'string') {
+        return { valid: false, error: 'Project must have a valid id' };
+    }
+
+    if (!p.title || typeof p.title !== 'string') {
+        return { valid: false, error: 'Project must have a valid title' };
+    }
+
+    if (!Array.isArray(p.groups)) {
+        return { valid: false, error: 'Project must have a groups array' };
+    }
+
+    if (typeof p.path !== 'string') {
+        return { valid: false, error: 'Project must have a valid path' };
+    }
+
+    // Optional: Validate that groups are valid
+    for (const group of p.groups) {
+        if (!group || typeof group !== 'object') {
+            return { valid: false, error: 'Project contains invalid group' };
+        }
+
+        const g = group as Record<string, unknown>;
+        if (!g.id || typeof g.id !== 'string') {
+            return { valid: false, error: 'Project group must have a valid id' };
+        }
+
+        if (!g.name || typeof g.name !== 'string') {
+            return { valid: false, error: 'Project group must have a valid name' };
+        }
+
+        if (!Array.isArray(g.tasks)) {
+            return { valid: false, error: 'Project group must have a tasks array' };
+        }
+    }
+
+    return { valid: true };
+}

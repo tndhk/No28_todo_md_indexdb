@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Project } from './types';
 import { supabase } from './supabase';
 import { getAllProjects, putProject } from './indexeddb';
+import { validateRemoteProject } from './validation';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
@@ -105,7 +106,28 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
         }
 
         // Supabase returns an array of objects, where each object has 'data' key which is our Project
-        const remoteProjects = remoteProjectsRaw ? remoteProjectsRaw.map(p => p.data as Project) : [];
+        // Filter and validate remote projects to prevent invalid data from causing sync failures
+        const remoteProjects: Project[] = [];
+        if (remoteProjectsRaw) {
+          for (const row of remoteProjectsRaw) {
+            const projectData = row.data;
+
+            // Skip null/undefined project data
+            if (!projectData) {
+              console.warn('[Sync] Skipping project with null/undefined data from Supabase');
+              continue;
+            }
+
+            // Validate the remote project structure
+            const validation = validateRemoteProject(projectData);
+            if (!validation.valid) {
+              console.warn(`[Sync] Skipping invalid project from Supabase: ${validation.error}`);
+              continue;
+            }
+
+            remoteProjects.push(projectData as Project);
+          }
+        }
 
         // Get local projects, with fallback to empty array if database isn't ready
         let localProjects: Project[] = [];
