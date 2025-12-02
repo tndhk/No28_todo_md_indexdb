@@ -84,6 +84,7 @@ export async function createProject(title: string): Promise<Project> {
             id,
             title,
             groups: [defaultGroup],
+            updated_at: new Date().toISOString(), // Set timestamp for sync
         };
 
         await idb.addProject(newProject);
