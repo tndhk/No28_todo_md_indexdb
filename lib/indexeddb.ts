@@ -141,6 +141,7 @@ export async function putProject(project: Omit<Project, 'path'>, options?: { sil
 
 /**
  * Update an existing project
+ * @sync Automatically updates timestamp for conflict resolution in sync
  * @performance Fixed async Promise constructor anti-pattern
  */
 export async function updateProject(
@@ -167,10 +168,21 @@ export async function updateProject(
 
             // Merge updates
             const updatedProject = { ...existingProject, ...project };
+
+            // SYNC: Automatically set updated_at if not explicitly provided
+            // This prevents old remote data from overwriting recent local changes
+            if (!project.updated_at) {
+                updatedProject.updated_at = new Date().toISOString();
+            }
+
+            console.log('[IDB] Project updated:', {
+                projectId: updatedProject.id,
+                timestamp: updatedProject.updated_at,
+            });
+
             const putRequest = store.put(updatedProject);
 
             putRequest.onsuccess = () => {
-                console.log('[IDB] Project updated:', updatedProject.id);
                 if (projectChangeCallback) {
                     projectChangeCallback(updatedProject);
                 }

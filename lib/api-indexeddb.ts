@@ -335,12 +335,26 @@ export async function fetchRawMarkdown(projectId: string): Promise<string> {
 /**
  * Save raw Markdown content for a project
  * Note: In IndexedDB mode, we need to parse Markdown and update the project
+ * @sync Uses fresh timestamp to prevent old remote data from overwriting local edits
  */
 export async function saveRawMarkdown(projectId: string, content: string): Promise<void> {
     try {
         // Parse Markdown and update project
-        const project = parseMarkdownToProject(projectId, content);
-        await idb.updateProject(project);
+        const parsedProject = parseMarkdownToProject(projectId, content);
+
+        // Always use fresh timestamp for local edits to prevent old remote data
+        // from overwriting local changes during sync
+        const projectToSave = {
+            ...parsedProject,
+            updated_at: new Date().toISOString(),
+        };
+
+        console.log('[Sync] Saving raw markdown:', {
+            projectId,
+            newTimestamp: projectToSave.updated_at,
+        });
+
+        await idb.updateProject(projectToSave);
     } catch (error) {
         console.error('Failed to save raw markdown:', error);
         throw new ApiError('Failed to save project content', 500);
@@ -529,6 +543,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
         title,
         groups: filteredGroups,
         path: '',
+        updated_at: new Date().toISOString(), // Set timestamp for new/updated projects
     };
 }
 
