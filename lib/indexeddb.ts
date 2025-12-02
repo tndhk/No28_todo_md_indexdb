@@ -7,7 +7,7 @@ const PROJECTS_STORE = 'projects';
 let projectChangeCallback: ((project: Project) => void) | null = null;
 
 export function setProjectChangeCallback(callback: ((project: Project) => void) | null) {
-  projectChangeCallback = callback;
+    projectChangeCallback = callback;
 }
 
 /**
@@ -128,7 +128,7 @@ export async function putProject(project: Omit<Project, 'path'>, options?: { sil
         const request = store.put(projectWithPath);
 
         request.onsuccess = () => {
-            console.log('[IDB] Project upserted:', projectWithPath.id, options?.silent ? '(silent)' : '');
+
             // Only trigger callback if not silent (prevents sync loops during downstream sync)
             if (projectChangeCallback && !options?.silent) {
                 projectChangeCallback(projectWithPath);
@@ -175,10 +175,7 @@ export async function updateProject(
                 updatedProject.updated_at = new Date().toISOString();
             }
 
-            console.log('[IDB] Project updated:', {
-                projectId: updatedProject.id,
-                timestamp: updatedProject.updated_at,
-            });
+
 
             const putRequest = store.put(updatedProject);
 
@@ -597,7 +594,7 @@ export async function moveTaskToGroup(
  */
 export async function initializeSampleData(): Promise<void> {
     const projects = await getAllProjects();
-    console.log('[IDB] Checking sample data initialization. Projects count:', projects.length);
+
 
     // Only initialize if database is empty
     if (projects.length > 0) return;
