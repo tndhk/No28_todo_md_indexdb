@@ -57,7 +57,7 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
       setSyncStatus('syncing');
 
       try {
-        const { data, error } = await client
+        const { error } = await client
           .from('projects')
           .upsert({
             id: project.id,
