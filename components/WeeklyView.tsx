@@ -1,7 +1,7 @@
 'use client';
 
 import { Task } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners, useDraggable } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { Circle, CheckCircle2 } from 'lucide-react';
@@ -34,13 +34,16 @@ function DraggableTask({
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
     onTaskClick: (task: Task) => void;
 }) {
+    const dragHandleRef = useRef<HTMLDivElement>(null);
     const {
         attributes,
         listeners,
         setNodeRef,
         transform,
         isDragging,
-    } = useDraggable({ id: task.id });
+    } = useDraggable({
+        id: task.id,
+    });
 
     const style = {
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -70,10 +73,15 @@ function DraggableTask({
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...listeners}
             className={`${styles.taskCard} ${styles[task.status]}`}
             onClick={handleCardClick}
         >
+            <div
+                ref={dragHandleRef}
+                className={styles.dragHandle}
+                title="Drag to change date"
+                {...listeners}
+            />
             <button
                 className={styles.taskCheckbox}
                 onClick={handleToggle}
@@ -332,6 +340,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             <DragOverlay>
                 {draggedTask ? (
                     <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging}`}>
+                        <div className={styles.dragHandle} />
                         <div style={{ opacity: 0, pointerEvents: 'none' }}>
                             <Circle size={16} />
                         </div>
