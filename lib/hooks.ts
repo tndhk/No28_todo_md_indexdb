@@ -50,18 +50,19 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
     const syncProjectToSupabase = async (project: Project) => {
       if (isSyncingRef.current) return;
-      
-      console.log('[Sync] Attempting upsert:', { 
-        projectId: project.id, 
-        userId, 
-        title: project.title 
+
+      console.log('[Sync] Attempting upsert:', {
+        projectId: project.id,
+        userId,
+        title: project.title,
+        groupCount: project.groups.length,
       });
 
       isSyncingRef.current = true;
       setSyncStatus('syncing');
 
       try {
-        const { error } = await client
+        const { data, error } = await client
           .from('projects')
           .upsert({
             id: project.id,
@@ -75,8 +76,14 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
           console.error(`Error syncing project ${project.id} to Supabase:`, error);
           throw error;
         }
+
+        console.log('[Sync] Upsert successful:', {
+          projectId: project.id,
+          response: data,
+        });
         setSyncStatus('synced');
       } catch (_error) {
+        console.error('[Sync] Upsert failed:', _error);
         setSyncStatus('error');
       } finally {
         isSyncingRef.current = false;
@@ -105,6 +112,11 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
           throw error;
         }
 
+        console.log('[Sync] Raw data from Supabase:', {
+          rowCount: remoteProjectsRaw?.length,
+          sample: remoteProjectsRaw?.[0],
+        });
+
         // Supabase returns an array of objects, where each object has 'data' key which is our Project
         // Filter and validate remote projects to prevent invalid data from causing sync failures
         const remoteProjects: Project[] = [];
@@ -114,20 +126,33 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
 
             // Skip null/undefined project data
             if (!projectData) {
-              console.warn('[Sync] Skipping project with null/undefined data from Supabase');
+              console.warn('[Sync] Skipping project with null/undefined data from Supabase', {
+                rowId: row.id,
+                projectTitle: row.title,
+              });
               continue;
             }
 
             // Validate the remote project structure
             const validation = validateRemoteProject(projectData);
             if (!validation.valid) {
-              console.warn(`[Sync] Skipping invalid project from Supabase: ${validation.error}`);
+              console.warn(`[Sync] Skipping invalid project from Supabase: ${validation.error}`, {
+                rowId: row.id,
+                projectTitle: row.title,
+                projectData: projectData,
+              });
               continue;
             }
 
+            console.log('[Sync] Valid project from Supabase:', {
+              projectId: projectData.id,
+              title: projectData.title,
+            });
             remoteProjects.push(projectData as Project);
           }
         }
+
+        console.log('[Sync] Projects to sync locally:', remoteProjects.length);
 
         // Get local projects, with fallback to empty array if database isn't ready
         let localProjects: Project[] = [];
