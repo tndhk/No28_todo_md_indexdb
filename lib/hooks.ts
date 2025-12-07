@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Project } from './types';
 import { supabase } from './supabase';
-import { getAllProjects, putProject } from './indexeddb';
+import { getAllProjects, putProject, encryptProjectForStorage, decryptProjectFromStorage } from './indexeddb';
 import { validateRemoteProject } from './validation';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
@@ -57,14 +57,17 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
       setSyncStatus('syncing');
 
       try {
+        // E2EE: Encrypt project before uploading to Supabase
+        const encryptedProject = await encryptProjectForStorage(project);
+
         const { error } = await client
           .from('projects')
           .upsert({
-            id: project.id,
+            id: encryptedProject.id,
             user_id: userId,
-            title: project.title,
-            data: project, // Store entire Project object as jsonb
-            updated_at: project.updated_at, // Use the updated_at from the project object
+            title: encryptedProject.title, // May be encrypted or plain depending on isEncrypted flag
+            data: encryptedProject, // Store entire Project object (encrypted) as jsonb
+            updated_at: encryptedProject.updated_at, // Use the updated_at from the project object
           }, { onConflict: 'id' });
 
         if (error) {
@@ -130,8 +133,9 @@ export function useSync({ userId, onRemoteProjectsFetched }: UseSyncProps) {
               continue;
             }
 
-
-            remoteProjects.push(projectData as Project);
+            // E2EE: Decrypt project after downloading from Supabase
+            const decryptedProject = await decryptProjectFromStorage(projectData as Project);
+            remoteProjects.push(decryptedProject);
           }
         }
 

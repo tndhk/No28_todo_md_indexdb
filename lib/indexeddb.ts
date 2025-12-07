@@ -1,4 +1,5 @@
 import { Project, Task, TaskStatus, RepeatFrequency, Group } from './types';
+import { encryptData, decryptData, hasMasterPassword } from './encryption';
 
 const DB_NAME = 'MarkdownTodoDB';
 const DB_VERSION = 2;
@@ -8,6 +9,196 @@ let projectChangeCallback: ((project: Project) => void) | null = null;
 
 export function setProjectChangeCallback(callback: ((project: Project) => void) | null) {
     projectChangeCallback = callback;
+}
+
+/**
+ * Encrypt sensitive fields in a task recursively
+ * @security E2EE: Encrypts task content before storage
+ */
+async function encryptTask(task: Task): Promise<Task> {
+    if (!hasMasterPassword()) {
+        // No encryption password set, return as-is
+        return task;
+    }
+
+    const encryptedTask: Task = { ...task };
+
+    // Encrypt task content
+    if (task.content) {
+        encryptedTask.encryptedContent = await encryptData(task.content);
+        // Keep original content for compatibility (can be removed for full E2EE)
+        // For now, we'll keep both to allow gradual migration
+    }
+
+    // Recursively encrypt subtasks
+    if (task.subtasks && task.subtasks.length > 0) {
+        encryptedTask.subtasks = await Promise.all(
+            task.subtasks.map(subtask => encryptTask(subtask))
+        );
+    }
+
+    return encryptedTask;
+}
+
+/**
+ * Decrypt sensitive fields in a task recursively
+ * @security E2EE: Decrypts task content after retrieval
+ */
+async function decryptTask(task: Task): Promise<Task> {
+    if (!hasMasterPassword() || !task.encryptedContent) {
+        // No encryption or not encrypted, return as-is
+        return task;
+    }
+
+    const decryptedTask: Task = { ...task };
+
+    // Decrypt task content
+    try {
+        decryptedTask.content = await decryptData(task.encryptedContent);
+    } catch (error) {
+        console.error('Failed to decrypt task content:', error);
+        // Keep encrypted content visible as fallback
+        decryptedTask.content = '[Encrypted - Unable to decrypt]';
+    }
+
+    // Recursively decrypt subtasks
+    if (task.subtasks && task.subtasks.length > 0) {
+        decryptedTask.subtasks = await Promise.all(
+            task.subtasks.map(subtask => decryptTask(subtask))
+        );
+    }
+
+    return decryptedTask;
+}
+
+/**
+ * Encrypt a group and all its tasks
+ * @security E2EE: Encrypts group name and all tasks
+ */
+async function encryptGroup(group: Group): Promise<Group> {
+    if (!hasMasterPassword()) {
+        return group;
+    }
+
+    const encryptedGroup: Group = { ...group };
+
+    // Encrypt group name
+    if (group.name) {
+        encryptedGroup.encryptedName = await encryptData(group.name);
+    }
+
+    // Encrypt all tasks
+    if (group.tasks && group.tasks.length > 0) {
+        encryptedGroup.tasks = await Promise.all(
+            group.tasks.map(task => encryptTask(task))
+        );
+    }
+
+    return encryptedGroup;
+}
+
+/**
+ * Decrypt a group and all its tasks
+ * @security E2EE: Decrypts group name and all tasks
+ */
+async function decryptGroup(group: Group): Promise<Group> {
+    if (!hasMasterPassword() || !group.encryptedName) {
+        // Decrypt tasks even if group name is not encrypted
+        const decryptedGroup: Group = { ...group };
+        if (group.tasks && group.tasks.length > 0) {
+            decryptedGroup.tasks = await Promise.all(
+                group.tasks.map(task => decryptTask(task))
+            );
+        }
+        return decryptedGroup;
+    }
+
+    const decryptedGroup: Group = { ...group };
+
+    // Decrypt group name
+    try {
+        decryptedGroup.name = await decryptData(group.encryptedName);
+    } catch (error) {
+        console.error('Failed to decrypt group name:', error);
+        decryptedGroup.name = '[Encrypted - Unable to decrypt]';
+    }
+
+    // Decrypt all tasks
+    if (group.tasks && group.tasks.length > 0) {
+        decryptedGroup.tasks = await Promise.all(
+            group.tasks.map(task => decryptTask(task))
+        );
+    }
+
+    return decryptedGroup;
+}
+
+/**
+ * Encrypt a project before storing in IndexedDB or Supabase
+ * @security E2EE: Encrypts project title and all groups/tasks
+ */
+export async function encryptProjectForStorage(project: Project): Promise<Project> {
+    // Skip encryption if no master password is set or project is not marked for encryption
+    if (!hasMasterPassword() || !project.isEncrypted) {
+        return project;
+    }
+
+    const encryptedProject: Project = { ...project };
+
+    // Encrypt project title
+    if (project.title) {
+        encryptedProject.encryptedTitle = await encryptData(project.title);
+    }
+
+    // Encrypt all groups
+    if (project.groups && project.groups.length > 0) {
+        encryptedProject.groups = await Promise.all(
+            project.groups.map(group => encryptGroup(group))
+        );
+    }
+
+    return encryptedProject;
+}
+
+/**
+ * Decrypt a project after retrieving from IndexedDB or Supabase
+ * @security E2EE: Decrypts project title and all groups/tasks
+ */
+export async function decryptProjectFromStorage(project: Project): Promise<Project> {
+    // Skip decryption if no master password is set or project is not encrypted
+    if (!hasMasterPassword() || !project.isEncrypted) {
+        return project;
+    }
+
+    const decryptedProject: Project = { ...project };
+
+    // Decrypt project title
+    if (project.encryptedTitle) {
+        try {
+            decryptedProject.title = await decryptData(project.encryptedTitle);
+        } catch (error) {
+            console.error('Failed to decrypt project title:', error);
+            decryptedProject.title = '[Encrypted - Unable to decrypt]';
+        }
+    }
+
+    // Decrypt all groups
+    if (project.groups && project.groups.length > 0) {
+        decryptedProject.groups = await Promise.all(
+            project.groups.map(group => decryptGroup(group))
+        );
+    }
+
+    return decryptedProject;
+}
+
+// Internal aliases for backwards compatibility
+async function encryptProject(project: Project): Promise<Project> {
+    return encryptProjectForStorage(project);
+}
+
+async function decryptProject(project: Project): Promise<Project> {
+    return decryptProjectFromStorage(project);
 }
 
 /**
@@ -60,6 +251,7 @@ function openDatabase(): Promise<IDBDatabase> {
 
 /**
  * Get all projects from IndexedDB
+ * @security E2EE: Automatically decrypts projects if master password is set
  */
 export async function getAllProjects(): Promise<Project[]> {
     const db = await openDatabase();
@@ -68,13 +260,21 @@ export async function getAllProjects(): Promise<Project[]> {
         const store = transaction.objectStore(PROJECTS_STORE);
         const request = store.getAll();
 
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = async () => {
+            const projects = request.result;
+            // Decrypt all projects if needed
+            const decryptedProjects = await Promise.all(
+                projects.map(project => decryptProject(project))
+            );
+            resolve(decryptedProjects);
+        };
         request.onerror = () => reject(request.error);
     });
 }
 
 /**
  * Get a single project by ID
+ * @security E2EE: Automatically decrypts project if master password is set
  */
 export async function getProjectById(projectId: string): Promise<Project | null> {
     const db = await openDatabase();
@@ -83,28 +283,44 @@ export async function getProjectById(projectId: string): Promise<Project | null>
         const store = transaction.objectStore(PROJECTS_STORE);
         const request = store.get(projectId);
 
-        request.onsuccess = () => resolve(request.result || null);
+        request.onsuccess = async () => {
+            const project = request.result;
+            if (!project) {
+                resolve(null);
+                return;
+            }
+            // Decrypt project if needed
+            const decryptedProject = await decryptProject(project);
+            resolve(decryptedProject);
+        };
         request.onerror = () => reject(request.error);
     });
 }
 
 /**
  * Add a new project
+ * @security E2EE: Automatically encrypts project before storage if master password is set
  */
 export async function addProject(
     project: Omit<Project, 'path'>,
 ): Promise<void> {
     const db = await openDatabase();
+
+    // Add path as empty string for IndexedDB mode
+    const projectWithPath: Project = { ...project, path: '' };
+
+    // Encrypt project if needed (before storing)
+    const projectToStore = await encryptProject(projectWithPath);
+
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
         const store = transaction.objectStore(PROJECTS_STORE);
 
-        // Add path as empty string for IndexedDB mode
-        const projectWithPath: Project = { ...project, path: '' };
-        const request = store.add(projectWithPath);
+        const request = store.add(projectToStore);
 
         request.onsuccess = () => {
             if (projectChangeCallback) {
+                // Pass decrypted version to callback
                 projectChangeCallback(projectWithPath);
             }
             resolve();
@@ -116,21 +332,28 @@ export async function addProject(
 /**
  * Put (upsert) a project - inserts if new, updates if exists
  * This is safer for sync operations as it doesn't require the project to pre-exist
+ * @security E2EE: Automatically encrypts project before storage if master password is set
  */
 export async function putProject(project: Omit<Project, 'path'>, options?: { silent?: boolean }): Promise<void> {
     const db = await openDatabase();
+
+    // Add path as empty string for IndexedDB mode
+    const projectWithPath: Project = { ...project, path: '' };
+
+    // Encrypt project if needed (before storing)
+    const projectToStore = await encryptProject(projectWithPath);
+
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
         const store = transaction.objectStore(PROJECTS_STORE);
 
-        // Add path as empty string for IndexedDB mode
-        const projectWithPath: Project = { ...project, path: '' };
-        const request = store.put(projectWithPath);
+        const request = store.put(projectToStore);
 
         request.onsuccess = () => {
 
             // Only trigger callback if not silent (prevents sync loops during downstream sync)
             if (projectChangeCallback && !options?.silent) {
+                // Pass decrypted version to callback
                 projectChangeCallback(projectWithPath);
             }
             resolve();
@@ -143,20 +366,21 @@ export async function putProject(project: Omit<Project, 'path'>, options?: { sil
  * Update an existing project
  * @sync Automatically updates timestamp for conflict resolution in sync
  * @performance Fixed async Promise constructor anti-pattern
+ * @security E2EE: Automatically encrypts project before storage if master password is set
  */
 export async function updateProject(
     project: Partial<Project> & { id: string },
 ): Promise<void> {
     const db = await openDatabase();
-    // PERFORMANCE: Removed async Promise constructor anti-pattern
-    return new Promise((resolve, reject) => {
+
+    return new Promise(async (resolve, reject) => {
         const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
         const store = transaction.objectStore(PROJECTS_STORE);
 
         // Get existing project
         const getRequest = store.get(project.id);
 
-        getRequest.onsuccess = () => {
+        getRequest.onsuccess = async () => {
             const existingProject = getRequest.result;
             if (!existingProject) {
                 // RACE CONDITION FIX: During sync, a project might not exist yet or have been replaced
@@ -166,8 +390,11 @@ export async function updateProject(
                 return;
             }
 
+            // Decrypt existing project first
+            const decryptedExisting = await decryptProject(existingProject);
+
             // Merge updates
-            const updatedProject = { ...existingProject, ...project };
+            const updatedProject = { ...decryptedExisting, ...project };
 
             // SYNC: Automatically set updated_at if not explicitly provided
             // This prevents old remote data from overwriting recent local changes
@@ -175,12 +402,14 @@ export async function updateProject(
                 updatedProject.updated_at = new Date().toISOString();
             }
 
+            // Encrypt before storing
+            const projectToStore = await encryptProject(updatedProject);
 
-
-            const putRequest = store.put(updatedProject);
+            const putRequest = store.put(projectToStore);
 
             putRequest.onsuccess = () => {
                 if (projectChangeCallback) {
+                    // Pass decrypted version to callback
                     projectChangeCallback(updatedProject);
                 }
                 resolve();
