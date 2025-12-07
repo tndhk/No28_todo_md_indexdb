@@ -14,6 +14,7 @@ import MDView from '@/components/MDView';
 import AuthModal from '@/components/AuthModal';
 import AddTaskModal from '@/components/AddTaskModal';
 import CreateProjectModal from '@/components/CreateProjectModal';
+import EncryptionSetupModal from '@/components/EncryptionSetupModal';
 import Toast, { ToastMessage, ToastType } from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { triggerConfetti } from '@/lib/confetti';
@@ -35,6 +36,7 @@ import {
 } from '@/lib/api-indexeddb';
 // Import encryption migration utilities for browser console access
 import '@/lib/encryption-migration';
+import { hasMasterPassword } from '@/lib/encryption';
 import styles from './page.module.css';
 
 type ViewType = 'tree' | 'weekly' | 'md';
@@ -53,6 +55,7 @@ export default function Home() {
   const [hideDoneTasks, setHideDoneTasks] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [isEncryptionSetupModalOpen, setIsEncryptionSetupModalOpen] = useState(false);
 
   const showToast = useCallback((type: ToastType, message: string) => {
     // SECURITY & MAINTAINABILITY: Use crypto.randomUUID() instead of Math.random() and substr()
@@ -121,6 +124,21 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('hideDoneTasks', hideDoneTasks.toString());
   }, [hideDoneTasks]);
+
+  // Check if encryption setup modal should be shown
+  useEffect(() => {
+    // Only check after projects have loaded
+    if (loading) return;
+
+    // Check if user has already been prompted or has set up encryption
+    const hasSeenPrompt = localStorage.getItem('encryption-setup-prompted') === 'true';
+    const hasPassword = hasMasterPassword();
+
+    // If there are projects, user hasn't been prompted, and no password is set, show the modal
+    if (projects.length > 0 && !hasSeenPrompt && !hasPassword) {
+      setIsEncryptionSetupModalOpen(true);
+    }
+  }, [loading, projects.length]);
 
 
 
@@ -648,6 +666,18 @@ export default function Home() {
     showToast('error', message);
   }, [showToast]);
 
+  const handleEncryptionSetupComplete = useCallback(() => {
+    // Mark as prompted so we don't show again
+    localStorage.setItem('encryption-setup-prompted', 'true');
+    showToast('success', 'Encryption enabled successfully');
+  }, [showToast]);
+
+  const handleEncryptionSetupClose = useCallback(() => {
+    // Mark as prompted even if user skipped
+    localStorage.setItem('encryption-setup-prompted', 'true');
+    setIsEncryptionSetupModalOpen(false);
+  }, []);
+
   // Show loading state
   if (loading) {
     return (
@@ -827,6 +857,12 @@ export default function Home() {
         <AuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
+        />
+
+        <EncryptionSetupModal
+          isOpen={isEncryptionSetupModalOpen}
+          onClose={handleEncryptionSetupClose}
+          onComplete={handleEncryptionSetupComplete}
         />
 
         <Toast toasts={toasts} onDismiss={dismissToast} />
