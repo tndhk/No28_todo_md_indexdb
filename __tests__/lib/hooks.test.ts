@@ -11,7 +11,13 @@ import * as supabaseModule from '@/lib/supabase';
 import { Project } from '@/lib/types';
 
 // Mock IndexedDB
-jest.mock('@/lib/indexeddb');
+jest.mock('@/lib/indexeddb', () => ({
+    getAllProjects: jest.fn(),
+    putProject: jest.fn(),
+    // Mock encryption functions to pass through data unchanged (for testing)
+    encryptProjectForStorage: jest.fn((project) => Promise.resolve(project)),
+    decryptProjectFromStorage: jest.fn((project) => Promise.resolve(project)),
+}));
 
 // Mock Supabase
 jest.mock('@/lib/supabase');
