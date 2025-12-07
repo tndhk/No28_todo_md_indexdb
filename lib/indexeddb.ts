@@ -365,7 +365,7 @@ export async function putProject(project: Omit<Project, 'path'>, options?: { sil
 /**
  * Update an existing project
  * @sync Automatically updates timestamp for conflict resolution in sync
- * @performance Fixed async Promise constructor anti-pattern
+ * @performance Fixed async Promise constructor anti-pattern and transaction timeout
  * @security E2EE: Automatically encrypts project before storage if master password is set
  */
 export async function updateProject(
@@ -373,51 +373,52 @@ export async function updateProject(
 ): Promise<void> {
     const db = await openDatabase();
 
-    return new Promise(async (resolve, reject) => {
-        const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
+    // Step 1: Read existing project (separate transaction)
+    const existingProject = await new Promise<Project | undefined>((resolve, reject) => {
+        const transaction = db.transaction(PROJECTS_STORE, 'readonly');
         const store = transaction.objectStore(PROJECTS_STORE);
-
-        // Get existing project
         const getRequest = store.get(project.id);
 
-        getRequest.onsuccess = async () => {
-            const existingProject = getRequest.result;
-            if (!existingProject) {
-                // RACE CONDITION FIX: During sync, a project might not exist yet or have been replaced
-                // Instead of throwing an error, log a warning and skip the update gracefully
-                console.warn('[IDB] Project not found during update, skipping:', project.id);
-                resolve(); // Resolve successfully to prevent errors from propagating
-                return;
-            }
-
-            // Decrypt existing project first
-            const decryptedExisting = await decryptProject(existingProject);
-
-            // Merge updates
-            const updatedProject = { ...decryptedExisting, ...project };
-
-            // SYNC: Automatically set updated_at if not explicitly provided
-            // This prevents old remote data from overwriting recent local changes
-            if (!project.updated_at) {
-                updatedProject.updated_at = new Date().toISOString();
-            }
-
-            // Encrypt before storing
-            const projectToStore = await encryptProject(updatedProject);
-
-            const putRequest = store.put(projectToStore);
-
-            putRequest.onsuccess = () => {
-                if (projectChangeCallback) {
-                    // Pass decrypted version to callback
-                    projectChangeCallback(updatedProject);
-                }
-                resolve();
-            };
-            putRequest.onerror = () => reject(putRequest.error);
-        };
-
+        getRequest.onsuccess = () => resolve(getRequest.result);
         getRequest.onerror = () => reject(getRequest.error);
+    });
+
+    if (!existingProject) {
+        // RACE CONDITION FIX: During sync, a project might not exist yet or have been replaced
+        // Instead of throwing an error, log a warning and skip the update gracefully
+        console.warn('[IDB] Project not found during update, skipping:', project.id);
+        return; // Return successfully to prevent errors from propagating
+    }
+
+    // Step 2: Decrypt existing project
+    const decryptedExisting = await decryptProject(existingProject);
+
+    // Step 3: Merge updates
+    const updatedProject = { ...decryptedExisting, ...project };
+
+    // SYNC: Automatically set updated_at if not explicitly provided
+    // This prevents old remote data from overwriting recent local changes
+    if (!project.updated_at) {
+        updatedProject.updated_at = new Date().toISOString();
+    }
+
+    // Step 4: Encrypt before storing
+    const projectToStore = await encryptProject(updatedProject);
+
+    // Step 5: Write encrypted project (separate transaction after all async work is done)
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(PROJECTS_STORE, 'readwrite');
+        const store = transaction.objectStore(PROJECTS_STORE);
+        const putRequest = store.put(projectToStore);
+
+        putRequest.onsuccess = () => {
+            if (projectChangeCallback) {
+                // Pass decrypted version to callback
+                projectChangeCallback(updatedProject);
+            }
+            resolve();
+        };
+        putRequest.onerror = () => reject(putRequest.error);
     });
 }
 
