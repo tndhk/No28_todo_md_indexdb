@@ -33,6 +33,8 @@ import {
   moveTaskToGroup as apiMoveTaskToGroup,
   getErrorMessage,
 } from '@/lib/api-indexeddb';
+// Import encryption migration utilities for browser console access
+import '@/lib/encryption-migration';
 import styles from './page.module.css';
 
 type ViewType = 'tree' | 'weekly' | 'md';
