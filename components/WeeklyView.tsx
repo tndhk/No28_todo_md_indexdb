@@ -9,6 +9,26 @@ import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import PomodoroModal from './PomodoroModal';
 import styles from './WeeklyView.module.css';
 
+// Helper function to determine due date status class
+function getDueDateClass(dueDate: string): string {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0); // Reset time to start of day
+
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return styles.dueBadgeOverdue; // Past due - red
+    } else if (diffDays === 0) {
+        return styles.dueBadgeToday; // Due today - orange
+    } else {
+        return styles.dueBadgeUpcoming; // Future - green
+    }
+}
+
 interface WeeklyViewProps {
     tasks: Task[];
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
@@ -100,7 +120,7 @@ function DraggableTask({
                 <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
                     {renderMarkdownLinks(task.content)}
                     {task.scheduledDate && task.dueDate && task.scheduledDate !== task.dueDate && (
-                        <span className={styles.dueBadge} title="Due date">
+                        <span className={`${styles.dueBadge} ${getDueDateClass(task.dueDate)}`} title="Due date">
                             🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
                         </span>
                     )}
