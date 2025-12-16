@@ -138,12 +138,28 @@
 
 .dueDate {
     font-size: 0.75rem;
-    color: var(--secondary);
-    background: rgba(236, 72, 153, 0.1);
     padding: 0.15rem 0.5rem;
     border-radius: var(--radius-sm);
     margin-right: 0.5rem;
-    border: 1px solid rgba(236, 72, 153, 0.2);
+    transition: all 0.2s;
+}
+
+.dueDateOverdue {
+    color: rgb(239, 68, 68);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dueDateToday {
+    color: rgb(249, 115, 22);
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.dueDateUpcoming {
+    color: rgb(34, 197, 94);
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .actions {

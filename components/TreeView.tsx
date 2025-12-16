@@ -9,6 +9,26 @@ import { CSS } from '@dnd-kit/utilities';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './TreeView.module.css';
 
+// Helper function to determine due date status class
+function getDueDateClass(dueDate: string): string {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0); // Reset time to start of day
+
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return styles.dueDateOverdue; // Past due - red
+    } else if (diffDays === 0) {
+        return styles.dueDateToday; // Due today - orange
+    } else {
+        return styles.dueDateUpcoming; // Future - green
+    }
+}
+
 interface TreeViewProps {
     groups: Group[];
     onTaskToggle: (task: Task, groupId: string) => void;
@@ -179,7 +199,7 @@ function TaskItemContent({
                         )}
 
                         {task.dueDate && (
-                            <span className={styles.dueDate}>
+                            <span className={`${styles.dueDate} ${getDueDateClass(task.dueDate)}`}>
                                 🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
                             </span>
                         )}
