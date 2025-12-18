@@ -204,19 +204,34 @@
 }
 
 .dragHandle {
-    width: 6px;
+    width: 24px;
     background: linear-gradient(to bottom, var(--primary), var(--border));
     border-radius: 2px;
     cursor: grab;
     flex-shrink: 0;
     transition: all 0.2s;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+    pointer-events: auto;
+    outline: none;
 }
 
 .dragHandle:hover {
-    width: 8px;
+    width: 28px;
     background: linear-gradient(to bottom, var(--primary), var(--primary-glow));
     box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.dragHandle::after {
+    content: '⋮⋮';
+    font-size: 10px;
+    color: var(--primary);
+    letter-spacing: -2px;
+    font-weight: 600;
 }
 
 .taskCheckbox {

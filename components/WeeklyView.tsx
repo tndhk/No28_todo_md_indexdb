@@ -92,6 +92,7 @@ function DraggableTask({
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
             className={`${styles.taskCard} ${styles[task.status]}`}
             onClick={handleCardClick}
         >
@@ -99,7 +100,6 @@ function DraggableTask({
                 ref={dragHandleRef}
                 className={styles.dragHandle}
                 title="Drag to change date"
-                {...attributes}
                 {...listeners}
             />
             <button
@@ -173,7 +173,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 5,
-                delay: 100,
+                delay: 50,
                 tolerance: 5,
             },
         })
