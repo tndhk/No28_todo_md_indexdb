@@ -338,6 +338,7 @@ export default function Home() {
         dueDate: updates.dueDate,
         status: updates.status,
         repeatFrequency: updates.repeatFrequency,
+        repeatIntervalDays: updates.repeatIntervalDays,
       }, task.id);
       setProjects(updatedProjects);
     } catch (error) {
