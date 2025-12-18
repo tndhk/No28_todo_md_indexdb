@@ -67,6 +67,8 @@ function TaskItemContent({
     setEditDueDate,
     editRepeatFrequency,
     setEditRepeatFrequency,
+    editRepeatIntervalDays,
+    setEditRepeatIntervalDays,
     onTaskToggle,
     onTaskDelete,
     onTaskAdd,
@@ -90,6 +92,8 @@ function TaskItemContent({
     setEditDueDate: (val: string) => void;
     editRepeatFrequency: string;
     setEditRepeatFrequency: (val: string) => void;
+    editRepeatIntervalDays: number | string;
+    setEditRepeatIntervalDays: (val: number | string) => void;
     onTaskToggle: (task: Task) => void;
     onTaskDelete: (task: Task) => void;
     onTaskAdd: (parentTask?: Task) => void;
@@ -183,6 +187,17 @@ function TaskItemContent({
                             <option value="monthly">Monthly</option>
                             <option value="custom">Custom</option>
                         </select>
+                        {editRepeatFrequency === 'custom' && (
+                            <input
+                                type="number"
+                                min="1"
+                                max="365"
+                                value={editRepeatIntervalDays}
+                                onChange={(e) => setEditRepeatIntervalDays(e.target.value ? Number(e.target.value) : '')}
+                                placeholder="days"
+                                className={styles.editNumberInput}
+                            />
+                        )}
                     </div>
                 ) : (
                     <>
@@ -260,6 +275,7 @@ function TaskItem({
     const [editScheduledDate, setEditScheduledDate] = useState(task.scheduledDate || '');
     const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
     const [editRepeatFrequency, setEditRepeatFrequency] = useState(task.repeatFrequency || '');
+    const [editRepeatIntervalDays, setEditRepeatIntervalDays] = useState(task.repeatIntervalDays || '');
 
     const {
         attributes,
@@ -278,11 +294,13 @@ function TaskItem({
 
     const handleSave = () => {
         if (editContent.trim()) {
+            const interval = editRepeatFrequency === 'custom' && editRepeatIntervalDays ? Number(editRepeatIntervalDays) : undefined;
             onTaskUpdate(task, {
                 content: editContent,
                 scheduledDate: editScheduledDate || undefined,
                 dueDate: editDueDate || undefined,
                 repeatFrequency: editRepeatFrequency ? (editRepeatFrequency as RepeatFrequency) : undefined,
+                repeatIntervalDays: interval,
             });
             setIsEditing(false);
         }
@@ -293,6 +311,7 @@ function TaskItem({
         setEditScheduledDate(task.scheduledDate || '');
         setEditDueDate(task.dueDate || '');
         setEditRepeatFrequency(task.repeatFrequency || '');
+        setEditRepeatIntervalDays(task.repeatIntervalDays || '');
         setIsEditing(false);
     };
 
@@ -314,6 +333,8 @@ function TaskItem({
                 setEditDueDate={setEditDueDate}
                 editRepeatFrequency={editRepeatFrequency}
                 setEditRepeatFrequency={setEditRepeatFrequency}
+                editRepeatIntervalDays={editRepeatIntervalDays}
+                setEditRepeatIntervalDays={setEditRepeatIntervalDays}
                 onTaskToggle={onTaskToggle}
                 onTaskDelete={onTaskDelete}
                 onTaskAdd={onTaskAdd}
@@ -677,6 +698,8 @@ export default function TreeView({
                         setEditDueDate={() => { }}
                         editRepeatFrequency={activeTask.repeatFrequency || ''}
                         setEditRepeatFrequency={() => { }}
+                        editRepeatIntervalDays={activeTask.repeatIntervalDays || ''}
+                        setEditRepeatIntervalDays={() => { }}
                         onTaskToggle={() => { }}
                         onTaskDelete={() => { }}
                         onTaskAdd={() => { }}
