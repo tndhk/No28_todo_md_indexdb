@@ -136,6 +136,16 @@
     color: var(--foreground-muted);
 }
 
+.scheduledDate {
+    font-size: 0.75rem;
+    color: rgb(59, 130, 246);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    margin-right: 0.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
 .dueDate {
     font-size: 0.75rem;
     padding: 0.15rem 0.5rem;
@@ -434,6 +444,7 @@
         font-size: 0.8rem;
     }
 
+    .scheduledDate,
     .dueDate,
     .repeatBadge {
         font-size: 0.7rem;
