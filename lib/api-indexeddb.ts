@@ -137,7 +137,8 @@ export async function addTask(
     parentLineNumber?: number, // Ignored in IndexedDB mode
     repeatFrequency?: RepeatFrequency,
     parentId?: string, // Use this instead of parentLineNumber
-    scheduledDate?: string
+    scheduledDate?: string,
+    repeatIntervalDays?: number
 ): Promise<Project[]> {
     try {
         // Validate task content
@@ -168,7 +169,7 @@ export async function addTask(
             }
         }
 
-        await idb.addTask(projectId, groupId, content, status, dueDate, parentId, repeatFrequency, scheduledDate);
+        await idb.addTask(projectId, groupId, content, status, dueDate, parentId, repeatFrequency, scheduledDate, repeatIntervalDays);
         return await idb.getAllProjects();
     } catch (error) {
         if (error instanceof ApiError) throw error;
@@ -191,6 +192,7 @@ export async function updateTask(
         scheduledDate?: string;
         dueDate?: string;
         repeatFrequency?: RepeatFrequency;
+        repeatIntervalDays?: number;
     },
     taskId?: string // The actual task ID for IndexedDB mode
 ): Promise<Project[]> {
@@ -374,7 +376,14 @@ function serializeProjectToMarkdown(project: Project): string {
             const checkbox = task.status === 'done' ? '[x]' : '[ ]';
             const scheduledTag = task.scheduledDate ? ` #do:${task.scheduledDate}` : '';
             const dueTag = task.dueDate ? ` #due:${task.dueDate}` : '';
-            const repeatTag = task.repeatFrequency ? ` #repeat:${task.repeatFrequency}` : '';
+            let repeatTag = '';
+            if (task.repeatFrequency) {
+                if (task.repeatFrequency === 'custom' && task.repeatIntervalDays) {
+                    repeatTag = ` #repeat:every_${task.repeatIntervalDays}_days`;
+                } else {
+                    repeatTag = ` #repeat:${task.repeatFrequency}`;
+                }
+            }
             lines.push(`${indent}- ${checkbox} ${task.content}${scheduledTag}${dueTag}${repeatTag}`);
 
             if (task.subtasks.length > 0) {
@@ -466,13 +475,27 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
             const dueMatch = textContent.match(/#due:(\d{4}-\d{2}-\d{2})/);
             const dueDate = dueMatch ? dueMatch[1] : undefined;
 
-            const repeatMatch = textContent.match(/#repeat:(daily|weekly|monthly)/);
-            const repeatFrequency = repeatMatch ? (repeatMatch[1] as RepeatFrequency) : undefined;
+            const repeatMatch = textContent.match(/#repeat:(daily|weekly|monthly|every_\d+_days)/);
+            let repeatFrequency: RepeatFrequency | undefined;
+            let repeatIntervalDays: number | undefined;
+            if (repeatMatch) {
+                const matchedFreq = repeatMatch[1];
+                if (matchedFreq.startsWith('every_')) {
+                    // Parse custom interval (e.g., 'every_3_days' -> 3)
+                    const intervalMatch = matchedFreq.match(/every_(\d+)_days/);
+                    if (intervalMatch) {
+                        repeatFrequency = 'custom';
+                        repeatIntervalDays = parseInt(intervalMatch[1], 10);
+                    }
+                } else {
+                    repeatFrequency = matchedFreq as RepeatFrequency;
+                }
+            }
 
             const taskContent = textContent
                 .replace(/#do:\d{4}-\d{2}-\d{2}/g, '')
                 .replace(/#due:\d{4}-\d{2}-\d{2}/g, '')
-                .replace(/#repeat:(?:daily|weekly|monthly)/g, '')
+                .replace(/#repeat:(?:daily|weekly|monthly|every_\d+_days)/g, '')
                 .trim();
 
             // Validate task content to prevent XSS
@@ -504,6 +527,7 @@ function parseMarkdownToProject(projectId: string, content: string): Project {
                 scheduledDate,
                 dueDate,
                 repeatFrequency,
+                repeatIntervalDays,
                 subtasks: [],
                 parentId: taskStack.length > 0 ? taskStack[taskStack.length - 1].task.id : undefined,
                 parentContent,

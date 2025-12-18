@@ -1,5 +1,5 @@
 export type TaskStatus = 'todo' | 'doing' | 'done';
-export type RepeatFrequency = 'daily' | 'weekly' | 'monthly';
+export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 /**
  * Encrypted data structure (from lib/encryption.ts)
@@ -17,6 +17,7 @@ export interface Task {
     scheduledDate?: string; // YYYY-MM-DD - When to do the task
     dueDate?: string; // YYYY-MM-DD - Task deadline
     repeatFrequency?: RepeatFrequency; // For recurring tasks
+    repeatIntervalDays?: number; // For 'custom' repeat frequency (e.g., 3 for every 3 days)
     subtasks: Task[];
     parentId?: string;
     parentContent?: string; // Parent task content for display

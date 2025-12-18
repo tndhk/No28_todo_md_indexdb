@@ -181,6 +181,7 @@ function TaskItemContent({
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
+                            <option value="custom">Custom</option>
                         </select>
                     </div>
                 ) : (
@@ -206,7 +207,7 @@ function TaskItemContent({
 
                         {task.repeatFrequency && (
                             <span className={styles.repeatBadge}>
-                                🔁 {task.repeatFrequency}
+                                🔁 {task.repeatFrequency === 'custom' && task.repeatIntervalDays ? `every ${task.repeatIntervalDays} days` : task.repeatFrequency}
                             </span>
                         )}
 

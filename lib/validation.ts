@@ -210,7 +210,7 @@ export function sanitizeContent(content: string): string {
         // Remove any existing #due: tags (they'll be added back properly)
         .replace(/#due:\d{4}-\d{2}-\d{2}/g, '')
         // Remove any existing #repeat: tags (they'll be added back properly)
-        .replace(/#repeat:(daily|weekly|monthly)/g, '')
+        .replace(/#repeat:(?:daily|weekly|monthly|every_\d+_days)/g, '')
         .trim();
 }
 

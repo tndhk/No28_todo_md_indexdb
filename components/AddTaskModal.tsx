@@ -7,7 +7,7 @@ import styles from './AddTaskModal.module.css';
 interface AddTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string, scheduledDate?: string) => void;
+    onAdd: (content: string, status: TaskStatus, dueDate?: string, repeatFrequency?: RepeatFrequency, groupId?: string, scheduledDate?: string, repeatIntervalDays?: number) => void;
     defaultStatus?: TaskStatus;
     isSubtask?: boolean;
     groups?: Group[];
@@ -28,6 +28,7 @@ export default function AddTaskModal({
     const [scheduledDate, setScheduledDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
+    const [repeatIntervalDays, setRepeatIntervalDays] = useState<number | ''>('');
     const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
 
     if (!isOpen) return null;
@@ -35,18 +36,21 @@ export default function AddTaskModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (content.trim()) {
+            const interval = repeatFrequency === 'custom' && repeatIntervalDays ? Number(repeatIntervalDays) : undefined;
             onAdd(
                 content,
                 status,
                 dueDate || undefined,
                 repeatFrequency ? (repeatFrequency as RepeatFrequency) : undefined,
                 selectedGroupId || undefined,
-                scheduledDate || undefined
+                scheduledDate || undefined,
+                interval
             );
             setContent('');
             setScheduledDate('');
             setDueDate('');
             setRepeatFrequency('');
+            setRepeatIntervalDays('');
             setSelectedGroupId(defaultGroupId);
             onClose();
         }
@@ -127,8 +131,25 @@ export default function AddTaskModal({
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
+                            <option value="custom">Custom (Every N days)</option>
                         </select>
                     </div>
+
+                    {repeatFrequency === 'custom' && (
+                        <div className={styles.formGroup}>
+                            <label htmlFor="repeatIntervalDays">Every N days</label>
+                            <input
+                                id="repeatIntervalDays"
+                                type="number"
+                                min="1"
+                                max="365"
+                                value={repeatIntervalDays}
+                                onChange={(e) => setRepeatIntervalDays(e.target.value ? Number(e.target.value) : '')}
+                                placeholder="e.g., 3"
+                                className={styles.input}
+                            />
+                        </div>
+                    )}
 
                     <div className={styles.actions}>
                         <button type="button" onClick={onClose} className={styles.cancelButton}>
