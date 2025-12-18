@@ -19,10 +19,10 @@ export const DUE_DATE_PATTERN = /#due:(\d{4}-\d{2}-\d{2})/;
 
 /**
  * Regex pattern for matching and extracting repeat frequencies
- * Format: #repeat:daily|weekly|monthly
- * Captures: (frequency)
+ * Format: #repeat:daily|weekly|monthly|every_N_days
+ * Captures: (frequency) - can be 'daily', 'weekly', 'monthly', or 'every_N_days' where N is a number
  */
-export const REPEAT_FREQUENCY_PATTERN = /#repeat:(daily|weekly|monthly)/;
+export const REPEAT_FREQUENCY_PATTERN = /#repeat:(daily|weekly|monthly|every_\d+_days)/;
 
 /**
  * Regex pattern for detecting H1 headers (project title)

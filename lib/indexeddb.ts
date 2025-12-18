@@ -501,7 +501,8 @@ export async function addTask(
     dueDate?: string,
     parentId?: string,
     repeatFrequency?: RepeatFrequency,
-    scheduledDate?: string
+    scheduledDate?: string,
+    repeatIntervalDays?: number
 ): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
@@ -516,6 +517,7 @@ export async function addTask(
         scheduledDate,
         dueDate,
         repeatFrequency,
+        repeatIntervalDays,
         subtasks: [],
         parentId,
         lineNumber: 0, // Not used in IndexedDB mode
@@ -543,7 +545,7 @@ export async function addTask(
 export async function updateTask(
     projectId: string,
     taskId: string,
-    updates: Partial<Pick<Task, 'content' | 'status' | 'scheduledDate' | 'dueDate' | 'repeatFrequency'>>
+    updates: Partial<Pick<Task, 'content' | 'status' | 'scheduledDate' | 'dueDate' | 'repeatFrequency' | 'repeatIntervalDays'>>
 ): Promise<void> {
     const project = await getProjectById(projectId);
     if (!project) throw new Error('Project not found');
@@ -558,6 +560,7 @@ export async function updateTask(
     if (updates.scheduledDate !== undefined) task.scheduledDate = updates.scheduledDate;
     if (updates.dueDate !== undefined) task.dueDate = updates.dueDate;
     if (updates.repeatFrequency !== undefined) task.repeatFrequency = updates.repeatFrequency;
+    if (updates.repeatIntervalDays !== undefined) task.repeatIntervalDays = updates.repeatIntervalDays;
 
     await updateProject(project);
 }
@@ -581,7 +584,7 @@ export async function deleteTask(projectId: string, taskId: string): Promise<voi
 /**
  * Calculate next due date for recurring tasks
  */
-function calculateNextDueDate(currentDueDate: string, repeatFrequency: RepeatFrequency): string {
+function calculateNextDueDate(currentDueDate: string, repeatFrequency: RepeatFrequency, repeatIntervalDays?: number): string {
     const date = new Date(currentDueDate + 'T00:00:00');
 
     switch (repeatFrequency) {
@@ -593,6 +596,11 @@ function calculateNextDueDate(currentDueDate: string, repeatFrequency: RepeatFre
             break;
         case 'monthly':
             date.setMonth(date.getMonth() + 1);
+            break;
+        case 'custom':
+            if (repeatIntervalDays !== undefined) {
+                date.setDate(date.getDate() + repeatIntervalDays);
+            }
             break;
     }
 
@@ -624,12 +632,12 @@ export async function handleRecurringTask(
 
     // Calculate next scheduled date
     const nextScheduledDate = task.scheduledDate
-        ? calculateNextDueDate(task.scheduledDate, task.repeatFrequency)
+        ? calculateNextDueDate(task.scheduledDate, task.repeatFrequency, task.repeatIntervalDays)
         : undefined;
 
     // Calculate next due date
     const nextDueDate = task.dueDate
-        ? calculateNextDueDate(task.dueDate, task.repeatFrequency)
+        ? calculateNextDueDate(task.dueDate, task.repeatFrequency, task.repeatIntervalDays)
         : undefined;
 
     // Create new recurring task
@@ -640,6 +648,7 @@ export async function handleRecurringTask(
         scheduledDate: nextScheduledDate,
         dueDate: nextDueDate,
         repeatFrequency: task.repeatFrequency,
+        repeatIntervalDays: task.repeatIntervalDays,
         subtasks: [],
         parentId: task.parentId,
         parentContent: task.parentContent,

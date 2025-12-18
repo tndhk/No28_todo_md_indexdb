@@ -126,7 +126,7 @@ function DraggableTask({
                     )}
                     {task.repeatFrequency && (
                         <span className={styles.repeatBadge}>
-                            🔁 {task.repeatFrequency}
+                            🔁 {task.repeatFrequency === 'custom' && task.repeatIntervalDays ? `every ${task.repeatIntervalDays} days` : task.repeatFrequency}
                         </span>
                     )}
                 </div>
@@ -358,7 +358,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                                 {renderMarkdownLinks(draggedTask.content)}
                                 {draggedTask.repeatFrequency && (
                                     <span className={styles.repeatBadge}>
-                                        🔁 {draggedTask.repeatFrequency}
+                                        🔁 {draggedTask.repeatFrequency === 'custom' && draggedTask.repeatIntervalDays ? `every ${draggedTask.repeatIntervalDays} days` : draggedTask.repeatFrequency}
                                     </span>
                                 )}
                             </div>

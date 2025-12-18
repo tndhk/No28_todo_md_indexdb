@@ -333,6 +333,7 @@ describe('addTask', () => {
             undefined,
             undefined,
             undefined,
+            undefined,
             undefined
         );
     });
@@ -447,7 +448,8 @@ describe('addTask', () => {
             '2025-12-31',
             undefined,
             'daily',
-            '2025-12-25'
+            '2025-12-25',
+            undefined
         );
     });
 });
