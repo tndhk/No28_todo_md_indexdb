@@ -21,6 +21,7 @@ export interface Task {
     subtasks: Task[];
     parentId?: string;
     parentContent?: string; // Parent task content for display
+    groupName?: string; // Group name (## level in Markdown - e.g., Todo, Doing, Done)
     rawLine: string; // Original line content for updates
     lineNumber: number; // Line number in the file (1-indexed)
     // E2EE: Encrypted content (when encryption is enabled)

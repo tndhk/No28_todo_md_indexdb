@@ -153,16 +153,27 @@ export default function Home() {
 
   // const currentGroup = currentProject?.groups.find(g => g.id === currentGroupId);
 
+  // Helper function to recursively add groupName to tasks
+  const addGroupNameToTasks = useCallback((tasks: Task[], groupName: string): Task[] => {
+    return tasks.map(task => ({
+      ...task,
+      groupName,
+      subtasks: addGroupNameToTasks(task.subtasks, groupName),
+    }));
+  }, []);
+
   // Get all tasks from all groups for Calendar view
   const allProjectTasks = useMemo(() => {
     if (!currentProject) return [];
 
     const tasks: Task[] = [];
     currentProject.groups.forEach(group => {
-      tasks.push(...group.tasks);
+      // Add groupName to each task for display in calendar view
+      const tasksWithGroupName = addGroupNameToTasks(group.tasks, group.name);
+      tasks.push(...tasksWithGroupName);
     });
     return tasks;
-  }, [currentProject]);
+  }, [currentProject, addGroupNameToTasks]);
 
   // Filter tasks based on hideDoneTasks and search query
   const displayTasks = useMemo(() => {
