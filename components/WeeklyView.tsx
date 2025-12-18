@@ -114,8 +114,8 @@ function DraggableTask({
                 )}
             </button>
             <div className={styles.taskCardContent}>
-                {task.parentContent && (
-                    <div className={styles.parentContent}>{task.parentContent}</div>
+                {task.groupName && (
+                    <div className={styles.parentContent}>{task.groupName}</div>
                 )}
                 <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
                     {renderMarkdownLinks(task.content)}
@@ -351,8 +351,8 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                             <Circle size={16} />
                         </div>
                         <div className={styles.taskCardContent}>
-                            {draggedTask.parentContent && (
-                                <div className={styles.parentContent}>{draggedTask.parentContent}</div>
+                            {draggedTask.groupName && (
+                                <div className={styles.parentContent}>{draggedTask.groupName}</div>
                             )}
                             <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
                                 {renderMarkdownLinks(draggedTask.content)}
