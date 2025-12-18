@@ -124,10 +124,7 @@ export default function AddTaskModal({
                         <select
                             id="repeatFrequency"
                             value={repeatFrequency || ''}
-                            onChange={(e) => {
-                                console.log('Selected repeat frequency:', e.target.value);
-                                setRepeatFrequency(e.target.value as RepeatFrequency | '');
-                            }}
+                            onChange={(e) => setRepeatFrequency(e.target.value as RepeatFrequency | '')}
                             className={styles.select}
                         >
                             <option value="">None</option>

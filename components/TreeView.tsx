@@ -178,10 +178,7 @@ function TaskItemContent({
                         />
                         <select
                             value={editRepeatFrequency}
-                            onChange={(e) => {
-                                console.log('TreeView: Selected repeat frequency:', e.target.value);
-                                setEditRepeatFrequency(e.target.value);
-                            }}
+                            onChange={(e) => setEditRepeatFrequency(e.target.value)}
                             className={styles.editRepeatSelect}
                         >
                             <option value="">No repeat</option>
@@ -190,10 +187,7 @@ function TaskItemContent({
                             <option value="monthly">Monthly</option>
                             <option value="custom">Custom</option>
                         </select>
-                        {(() => {
-                            console.log('TreeView condition check:', { editRepeatFrequency, isCustom: editRepeatFrequency === 'custom' });
-                            return editRepeatFrequency === 'custom';
-                        })() && (
+                        {editRepeatFrequency === 'custom' && (
                             <input
                                 type="number"
                                 min="1"
