@@ -173,7 +173,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 5,
-                delay: 100,
+                delay: 50,
                 tolerance: 5,
             },
         })
