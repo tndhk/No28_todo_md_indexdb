@@ -92,7 +92,6 @@ function DraggableTask({
         <div
             ref={setNodeRef}
             style={style}
-            {...attributes}
             className={`${styles.taskCard} ${styles[task.status]}`}
             onClick={handleCardClick}
         >
@@ -100,6 +99,7 @@ function DraggableTask({
                 ref={dragHandleRef}
                 className={styles.dragHandle}
                 title="Drag to change date"
+                {...attributes}
                 {...listeners}
             />
             <button
