@@ -268,6 +268,71 @@
     color: var(--foreground);
 }
 
+.metaRow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.datePill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.doPill {
+    color: rgb(59, 130, 246);
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.duePill {
+    transition: all 0.2s;
+}
+
+.duePillOverdue {
+    color: rgb(239, 68, 68);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.duePillToday {
+    color: rgb(249, 115, 22);
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.duePillUpcoming {
+    color: rgb(34, 197, 94);
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dueAccentOverdue::before {
+    background: rgb(239, 68, 68);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
+.dueAccentToday::before {
+    background: rgb(249, 115, 22);
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+}
+
+.dueAccentUpcoming::before {
+    background: rgb(34, 197, 94);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.25);
+}
+
 .taskStatus {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -312,34 +377,6 @@
     font-style: italic;
     padding-left: 0.5rem;
     color: var(--foreground-muted);
-}
-
-.dueBadge {
-    display: inline-block;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: var(--radius-sm);
-    margin-left: 0.5rem;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.dueBadgeOverdue {
-    color: rgb(239, 68, 68);
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.dueBadgeToday {
-    color: rgb(249, 115, 22);
-    background: rgba(249, 115, 22, 0.1);
-    border: 1px solid rgba(249, 115, 22, 0.3);
-}
-
-.dueBadgeUpcoming {
-    color: rgb(34, 197, 94);
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .repeatBadge {
