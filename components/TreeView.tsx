@@ -1,6 +1,7 @@
 'use client';
 
 import { Task, RepeatFrequency, Group } from '@/lib/types';
+import { formatShortDate, getDueStatus } from '@/lib/due-status';
 import { ChevronRight, ChevronDown, Circle, CheckCircle2, Trash2, Plus, Edit2, GripVertical, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay, defaultDropAnimationSideEffects, DropAnimation } from '@dnd-kit/core';
@@ -9,25 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './TreeView.module.css';
 
-// Helper function to determine due date status class
-function getDueDateClass(dueDate: string): string {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day
-
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0); // Reset time to start of day
-
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-        return styles.dueDateOverdue; // Past due - red
-    } else if (diffDays === 0) {
-        return styles.dueDateToday; // Due today - orange
-    } else {
-        return styles.dueDateUpcoming; // Future - green
-    }
-}
+const capitalize = (value: string) => `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 
 interface TreeViewProps {
     groups: Group[];
@@ -103,6 +86,8 @@ function TaskItemContent({
     isOverlay?: boolean;
 }) {
     const hasSubtasks = task.subtasks.length > 0;
+    const dueStatus = getDueStatus(task.dueDate);
+    const dueClass = dueStatus ? styles[`duePill${capitalize(dueStatus)}`] : '';
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -201,30 +186,36 @@ function TaskItemContent({
                     </div>
                 ) : (
                     <>
-                        <span
-                            className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}
-                            onDoubleClick={onEditStart}
-                        >
-                            {renderMarkdownLinks(task.content)}
-                        </span>
-
-                        {task.scheduledDate && (
-                            <span className={styles.scheduledDate}>
-                                📅 {new Date(task.scheduledDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                        <div className={styles.taskMeta}>
+                            <span
+                                className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}
+                                onDoubleClick={onEditStart}
+                            >
+                                {renderMarkdownLinks(task.content)}
                             </span>
-                        )}
 
-                        {task.dueDate && (
-                            <span className={`${styles.dueDate} ${getDueDateClass(task.dueDate)}`}>
-                                🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
-                            </span>
-                        )}
+                            <div className={styles.datePills}>
+                                {task.scheduledDate && (
+                                    <span className={`${styles.datePill} ${styles.doPill}`}>
+                                        #do {formatShortDate(task.scheduledDate)}
+                                    </span>
+                                )}
 
-                        {task.repeatFrequency && (
-                            <span className={styles.repeatBadge}>
-                                🔁 {task.repeatFrequency === 'custom' && task.repeatIntervalDays ? `every ${task.repeatIntervalDays} days` : task.repeatFrequency}
-                            </span>
-                        )}
+                                {task.dueDate && (
+                                    <span
+                                        className={`${styles.datePill} ${styles.duePill} ${dueClass}`}
+                                    >
+                                        #due {formatShortDate(task.dueDate)}
+                                    </span>
+                                )}
+
+                                {task.repeatFrequency && (
+                                    <span className={styles.repeatBadge}>
+                                        🔁 {task.repeatFrequency === 'custom' && task.repeatIntervalDays ? `every ${task.repeatIntervalDays} days` : task.repeatFrequency}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
 
                         <div className={styles.actions}>
                             <button

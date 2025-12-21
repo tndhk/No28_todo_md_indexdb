@@ -1,6 +1,7 @@
 'use client';
 
 import { Task } from '@/lib/types';
+import { formatShortDate, getDueStatus } from '@/lib/due-status';
 import { useMemo, useState, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners, useDraggable } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
@@ -9,25 +10,7 @@ import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import PomodoroModal from './PomodoroModal';
 import styles from './WeeklyView.module.css';
 
-// Helper function to determine due date status class
-function getDueDateClass(dueDate: string): string {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day
-
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0); // Reset time to start of day
-
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-        return styles.dueBadgeOverdue; // Past due - red
-    } else if (diffDays === 0) {
-        return styles.dueBadgeToday; // Due today - orange
-    } else {
-        return styles.dueBadgeUpcoming; // Future - green
-    }
-}
+const capitalize = (value: string) => `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 
 interface WeeklyViewProps {
     tasks: Task[];
@@ -88,12 +71,16 @@ function DraggableTask({
         }
     };
 
+    const dueStatus = getDueStatus(task.dueDate);
+    const dueClass = dueStatus ? styles[`duePill${capitalize(dueStatus)}`] : '';
+    const dueAccentClass = dueStatus ? styles[`dueAccent${capitalize(dueStatus)}`] : '';
+
     return (
         <div
             ref={setNodeRef}
             style={style}
             {...attributes}
-            className={`${styles.taskCard} ${styles[task.status]}`}
+            className={`${styles.taskCard} ${styles[task.status]} ${dueAccentClass}`}
             onClick={handleCardClick}
         >
             <div
@@ -119,11 +106,21 @@ function DraggableTask({
                 )}
                 <div className={`${styles.taskContent} ${task.status === 'done' ? styles.completed : ''}`}>
                     {renderMarkdownLinks(task.content)}
-                    {task.scheduledDate && task.dueDate && task.scheduledDate !== task.dueDate && (
-                        <span className={`${styles.dueBadge} ${getDueDateClass(task.dueDate)}`} title="Due date">
-                            🔔 {new Date(task.dueDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                </div>
+
+                <div className={styles.metaRow}>
+                    {task.scheduledDate && (
+                        <span className={`${styles.datePill} ${styles.doPill}`}>
+                            #do {formatShortDate(task.scheduledDate)}
                         </span>
                     )}
+
+                    {task.dueDate && (
+                        <span className={`${styles.datePill} ${styles.duePill} ${dueClass}`} title="Due date">
+                            #due {formatShortDate(task.dueDate)}
+                        </span>
+                    )}
+
                     {task.repeatFrequency && (
                         <span className={styles.repeatBadge}>
                             🔁 {task.repeatFrequency === 'custom' && task.repeatIntervalDays ? `every ${task.repeatIntervalDays} days` : task.repeatFrequency}
@@ -162,6 +159,10 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [displayDate, setDisplayDate] = useState(new Date());
     const [weekdayOnly, setWeekdayOnly] = useState(true);
+
+    const overlayDueStatus = draggedTask?.dueDate ? getDueStatus(draggedTask.dueDate) : null;
+    const overlayDueAccentClass = overlayDueStatus ? styles[`dueAccent${capitalize(overlayDueStatus)}`] : '';
+    const overlayDuePillClass = overlayDueStatus ? styles[`duePill${capitalize(overlayDueStatus)}`] : '';
 
     const taskMap = useMemo(() => {
         const map = new Map<string, Task>();
@@ -343,29 +344,44 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                 </div>
             </div>
 
-            <DragOverlay>
-                {draggedTask ? (
-                    <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging}`}>
-                        <div className={styles.dragHandle} />
-                        <div style={{ opacity: 0, pointerEvents: 'none' }}>
-                            <Circle size={16} />
-                        </div>
-                        <div className={styles.taskCardContent}>
-                            {draggedTask.groupName && (
-                                <div className={styles.parentContent}>{draggedTask.groupName}</div>
-                            )}
-                            <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
-                                {renderMarkdownLinks(draggedTask.content)}
-                                {draggedTask.repeatFrequency && (
-                                    <span className={styles.repeatBadge}>
-                                        🔁 {draggedTask.repeatFrequency === 'custom' && draggedTask.repeatIntervalDays ? `every ${draggedTask.repeatIntervalDays} days` : draggedTask.repeatFrequency}
-                                    </span>
+                <DragOverlay>
+                    {draggedTask ? (
+                        <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging} ${overlayDueAccentClass}`}>
+                            <div className={styles.dragHandle} />
+                            <div style={{ opacity: 0, pointerEvents: 'none' }}>
+                                <Circle size={16} />
+                            </div>
+                            <div className={styles.taskCardContent}>
+                                {draggedTask.groupName && (
+                                    <div className={styles.parentContent}>{draggedTask.groupName}</div>
                                 )}
+                                <div className={`${styles.taskContent} ${draggedTask.status === 'done' ? styles.completed : ''}`}>
+                                    {renderMarkdownLinks(draggedTask.content)}
+                                </div>
+
+                                <div className={styles.metaRow}>
+                                    {draggedTask.scheduledDate && (
+                                        <span className={`${styles.datePill} ${styles.doPill}`}>
+                                            #do {formatShortDate(draggedTask.scheduledDate)}
+                                        </span>
+                                    )}
+
+                                    {draggedTask.dueDate && (
+                                        <span className={`${styles.datePill} ${styles.duePill} ${overlayDuePillClass}`} title="Due date">
+                                            #due {formatShortDate(draggedTask.dueDate)}
+                                        </span>
+                                    )}
+
+                                    {draggedTask.repeatFrequency && (
+                                        <span className={styles.repeatBadge}>
+                                            🔁 {draggedTask.repeatFrequency === 'custom' && draggedTask.repeatIntervalDays ? `every ${draggedTask.repeatIntervalDays} days` : draggedTask.repeatFrequency}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ) : null}
-            </DragOverlay>
+                    ) : null}
+                </DragOverlay>
 
             {selectedTask && (
                 <PomodoroModal
