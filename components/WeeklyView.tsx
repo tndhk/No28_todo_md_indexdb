@@ -84,12 +84,6 @@ function DraggableTask({
             className={`${styles.taskCard} ${styles[task.status]} ${dueAccentClass}`}
             onClick={handleCardClick}
         >
-            <div
-                ref={dragHandleRef}
-                className={styles.dragHandle}
-                title="Drag to change date"
-                {...listeners}
-            />
             <button
                 className={styles.taskCheckbox}
                 onClick={handleToggle}
@@ -129,6 +123,12 @@ function DraggableTask({
                     )}
                 </div>
             </div>
+            <div
+                ref={dragHandleRef}
+                className={styles.dragHandle}
+                title="Drag to change date"
+                {...listeners}
+            />
         </div>
     );
 }
@@ -359,7 +359,6 @@ export default function WeeklyView({ tasks, onTaskUpdate, onAddTaskForDate }: We
                 <DragOverlay>
                     {draggedTask ? (
                         <div className={`${styles.taskCard} ${styles[draggedTask.status]} ${styles.dragging} ${overlayDueAccentClass}`}>
-                            <div className={styles.dragHandle} />
                             <div style={{ opacity: 0, pointerEvents: 'none' }}>
                                 <Circle size={16} />
                             </div>
@@ -391,6 +390,7 @@ export default function WeeklyView({ tasks, onTaskUpdate, onAddTaskForDate }: We
                                     )}
                                 </div>
                             </div>
+                            <div className={styles.dragHandle} />
                         </div>
                     ) : null}
                 </DragOverlay>
