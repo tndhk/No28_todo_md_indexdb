@@ -1,7 +1,7 @@
 'use client';
 
-import { Task, RepeatFrequency } from '@/lib/types';
-import { useEffect, useState, useCallback, FormEvent } from 'react';
+import { Task } from '@/lib/types';
+import { useEffect, useState, useCallback } from 'react';
 import { X, Play, Pause, RotateCcw, Settings } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './PomodoroModal.module.css';
@@ -18,18 +18,13 @@ type TimerState = 'idle' | 'running' | 'paused';
 const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const DEFAULT_BREAK_DURATION = 5 * 60; // 5 minutes in seconds
 
-function PomodoroModalContent({ task, onClose, onTaskUpdate }: PomodoroModalProps) {
+function PomodoroModalContent({ task, onClose, onTaskUpdate: _onTaskUpdate }: PomodoroModalProps) {
     const [mode, setMode] = useState<TimerMode>('work');
     const [state, setState] = useState<TimerState>('idle');
     const [timeLeft, setTimeLeft] = useState(DEFAULT_WORK_DURATION);
     const [showSettings, setShowSettings] = useState(false);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedBeforePause, setElapsedBeforePause] = useState(0);
-
-    const [content, setContent] = useState(task.content);
-    const [dueDate, setDueDate] = useState(task.dueDate || '');
-    const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>(task.repeatFrequency || '');
-    const [repeatIntervalDays, setRepeatIntervalDays] = useState(task.repeatIntervalDays?.toString() || '');
 
     // Settings
     const [workDuration, setWorkDuration] = useState(DEFAULT_WORK_DURATION);
@@ -135,22 +130,6 @@ function PomodoroModalContent({ task, onClose, onTaskUpdate }: PomodoroModalProp
         ? ((workDuration - timeLeft) / workDuration) * 100
         : ((breakDuration - timeLeft) / breakDuration) * 100;
 
-    const handleTaskFormSubmit = useCallback((event?: FormEvent) => {
-        event?.preventDefault();
-        const trimmedContent = content.trim() || task.content;
-
-        const parsedInterval = repeatFrequency === 'custom'
-            ? Math.max(1, parseInt(repeatIntervalDays, 10) || 1)
-            : undefined;
-
-        onTaskUpdate(task, {
-            content: trimmedContent,
-            dueDate: dueDate || undefined,
-            repeatFrequency: repeatFrequency || undefined,
-            repeatIntervalDays: repeatFrequency === 'custom' ? parsedInterval : undefined,
-        });
-    }, [content, dueDate, onTaskUpdate, repeatFrequency, repeatIntervalDays, task]);
-
     return (
         <div className={styles.overlay} onClick={onClose}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -167,12 +146,12 @@ function PomodoroModalContent({ task, onClose, onTaskUpdate }: PomodoroModalProp
                             <div className={styles.parentContent}>{task.parentContent}</div>
                         )}
                         <div className={styles.taskTitle}>
-                            {renderMarkdownLinks(content)}
+                            {renderMarkdownLinks(task.content)}
                         </div>
                     </div>
-                    {dueDate && (
+                    {task.dueDate && (
                         <div className={styles.dueDate}>
-                            期限: {new Date(dueDate).toLocaleDateString('ja-JP', {
+                            期限: {new Date(task.dueDate).toLocaleDateString('ja-JP', {
                                 year: 'numeric',
                                 month: 'long',
                                 day: 'numeric'
@@ -180,71 +159,6 @@ function PomodoroModalContent({ task, onClose, onTaskUpdate }: PomodoroModalProp
                         </div>
                     )}
                 </div>
-
-                <form className={styles.editForm} onSubmit={handleTaskFormSubmit}>
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>タスク名</label>
-                        <input
-                            className={styles.textInput}
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            placeholder="タスク名を入力"
-                        />
-                    </div>
-
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>期限</label>
-                        <input
-                            className={styles.textInput}
-                            type="date"
-                            value={dueDate}
-                            onChange={(e) => setDueDate(e.target.value)}
-                        />
-                    </div>
-
-                    <div className={styles.formRow}>
-                        <label className={styles.formLabel}>リピート</label>
-                        <div className={styles.repeatRow}>
-                            <select
-                                className={styles.selectInput}
-                                value={repeatFrequency}
-                                onChange={(e) => {
-                                    const value = e.target.value as RepeatFrequency | '';
-                                    setRepeatFrequency(value);
-                                    if (value !== 'custom') {
-                                        setRepeatIntervalDays('');
-                                    }
-                                }}
-                            >
-                                <option value="">なし</option>
-                                <option value="daily">毎日</option>
-                                <option value="weekly">毎週</option>
-                                <option value="monthly">毎月</option>
-                                <option value="custom">カスタム</option>
-                            </select>
-
-                            {repeatFrequency === 'custom' && (
-                                <div className={styles.customRepeat}>
-                                    <span>毎</span>
-                                    <input
-                                        className={styles.numberInput}
-                                        type="number"
-                                        min={1}
-                                        value={repeatIntervalDays}
-                                        onChange={(e) => setRepeatIntervalDays(e.target.value)}
-                                    />
-                                    <span>日</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className={styles.formActions}>
-                        <button type="submit" className={styles.saveButton}>
-                            変更を保存
-                        </button>
-                    </div>
-                </form>
 
                 {showSettings ? (
                     <div className={styles.settings}>
