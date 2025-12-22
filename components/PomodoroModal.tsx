@@ -1,7 +1,7 @@
 'use client';
 
 import { Task, RepeatFrequency } from '@/lib/types';
-import { useEffect, useState, useCallback, FormEvent, useRef } from 'react';
+import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { X, Play, Pause, RotateCcw, Settings } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import styles from './PomodoroModal.module.css';
@@ -18,7 +18,7 @@ type TimerState = 'idle' | 'running' | 'paused';
 const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const DEFAULT_BREAK_DURATION = 5 * 60; // 5 minutes in seconds
 
-export default function PomodoroModal({ task, onClose, onTaskUpdate }: PomodoroModalProps) {
+function PomodoroModalContent({ task, onClose, onTaskUpdate }: PomodoroModalProps) {
     const [mode, setMode] = useState<TimerMode>('work');
     const [state, setState] = useState<TimerState>('idle');
     const [timeLeft, setTimeLeft] = useState(DEFAULT_WORK_DURATION);
@@ -31,32 +31,9 @@ export default function PomodoroModal({ task, onClose, onTaskUpdate }: PomodoroM
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>(task.repeatFrequency || '');
     const [repeatIntervalDays, setRepeatIntervalDays] = useState(task.repeatIntervalDays?.toString() || '');
 
-    const lastTaskIdRef = useRef(task.id);
-
     // Settings
     const [workDuration, setWorkDuration] = useState(DEFAULT_WORK_DURATION);
     const [breakDuration, setBreakDuration] = useState(DEFAULT_BREAK_DURATION);
-
-    // Reset timer when task changes
-    useEffect(() => {
-        const isNewTask = lastTaskIdRef.current !== task.id;
-        if (!isNewTask) return;
-
-        lastTaskIdRef.current = task.id;
-        setMode('work');
-        setState('idle');
-        setStartTime(null);
-        setElapsedBeforePause(0);
-        setTimeLeft(workDuration);
-    }, [task.id, workDuration]);
-
-    // Sync form fields when task data updates
-    useEffect(() => {
-        setContent(task.content);
-        setDueDate(task.dueDate || '');
-        setRepeatFrequency(task.repeatFrequency || '');
-        setRepeatIntervalDays(task.repeatIntervalDays?.toString() || '');
-    }, [task.content, task.dueDate, task.repeatFrequency, task.repeatIntervalDays]);
 
     // Request notification permission on mount
     useEffect(() => {
@@ -375,4 +352,8 @@ export default function PomodoroModal({ task, onClose, onTaskUpdate }: PomodoroM
             </div>
         </div>
     );
+}
+
+export default function PomodoroModal(props: PomodoroModalProps) {
+    return <PomodoroModalContent key={props.task.id} {...props} />;
 }
