@@ -51,6 +51,7 @@ export default function Home() {
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [modalParentTask, setModalParentTask] = useState<Task | undefined>();
   const [modalGroupId, setModalGroupId] = useState<string | undefined>();
+  const [modalScheduledDate, setModalScheduledDate] = useState<string | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [hideDoneTasks, setHideDoneTasks] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -624,6 +625,14 @@ export default function Home() {
     }
   };
 
+  const handleAddTaskForDate = useCallback((dateStr: string) => {
+    if (!currentProjectId || !currentGroupId) return;
+    setModalScheduledDate(dateStr);
+    setModalGroupId(currentGroupId);
+    setModalParentTask(undefined);
+    setIsModalOpen(true);
+  }, [currentProjectId, currentGroupId]);
+
   const handleCreateProject = async (title: string) => {
     try {
       const newProject = await createProject(title);
@@ -834,6 +843,7 @@ export default function Home() {
                 <WeeklyView
                   tasks={displayTasks}
                   onTaskUpdate={handleTaskUpdate}
+                  onAddTaskForDate={handleAddTaskForDate}
                 />
               )}
               {currentView === 'md' && currentProject && (
@@ -848,17 +858,19 @@ export default function Home() {
         </main>
 
         <AddTaskModal
-          key={`${modalGroupId || 'no-group'}-${modalParentTask?.id || 'no-parent'}`}
+          key={`${modalGroupId || 'no-group'}-${modalParentTask?.id || 'no-parent'}-${modalScheduledDate || 'no-date'}`}
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setModalParentTask(undefined);
             setModalGroupId(undefined);
+            setModalScheduledDate(undefined);
           }}
           onAdd={handleModalAdd}
           isSubtask={!!modalParentTask}
           groups={currentProject?.groups || []}
           defaultGroupId={modalGroupId}
+          defaultScheduledDate={modalScheduledDate}
         />
 
         <CreateProjectModal

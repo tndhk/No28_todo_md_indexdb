@@ -105,9 +105,10 @@
     border-bottom: 1px solid var(--border);
     text-align: center;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .dayName {
@@ -139,6 +140,32 @@
 .today .dayDate {
     color: var(--primary);
     text-shadow: 0 0 15px var(--primary-glow);
+}
+
+.addTaskButton {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.4rem;
+    cursor: pointer;
+    color: var(--foreground-muted);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.addTaskButton:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.addTaskButton:active {
+    transform: scale(0.95);
 }
 
 .taskList.dropActive {
