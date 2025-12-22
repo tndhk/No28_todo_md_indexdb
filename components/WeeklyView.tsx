@@ -386,6 +386,7 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
             {selectedTask && (
                 <PomodoroModal
                     task={selectedTask}
+                    onTaskUpdate={onTaskUpdate}
                     onClose={() => setSelectedTask(null)}
                 />
             )}
