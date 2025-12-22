@@ -5,7 +5,7 @@ import { formatShortDate, getDueStatus } from '@/lib/due-status';
 import { useMemo, useState, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners, useDraggable } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
-import { Circle, CheckCircle2 } from 'lucide-react';
+import { Circle, CheckCircle2, Plus } from 'lucide-react';
 import { renderMarkdownLinks } from '@/lib/markdown-link-renderer';
 import PomodoroModal from './PomodoroModal';
 import styles from './WeeklyView.module.css';
@@ -15,6 +15,7 @@ const capitalize = (value: string) => `${value.charAt(0).toUpperCase()}${value.s
 interface WeeklyViewProps {
     tasks: Task[];
     onTaskUpdate: (task: Task, updates: Partial<Task>) => void;
+    onAddTaskForDate?: (dateStr: string) => void;
 }
 
 function getAllTasks(tasks: Task[]): Task[] {
@@ -153,7 +154,7 @@ function DroppableDay({
     );
 }
 
-export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
+export default function WeeklyView({ tasks, onTaskUpdate, onAddTaskForDate }: WeeklyViewProps) {
     const allTasks = useMemo(() => getAllTasks(tasks), [tasks]);
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -321,8 +322,19 @@ export default function WeeklyView({ tasks, onTaskUpdate }: WeeklyViewProps) {
                         return (
                             <div key={dateStr} className={`${styles.dayColumn} ${isToday ? styles.today : ''}`}>
                                 <div className={styles.dayHeader}>
-                                    <div className={styles.dayName}>{dayNames[day.getDay()]}</div>
-                                    <div className={styles.dayDate}>{day.getDate()}</div>
+                                    <div>
+                                        <div className={styles.dayName}>{dayNames[day.getDay()]}</div>
+                                        <div className={styles.dayDate}>{day.getDate()}</div>
+                                    </div>
+                                    {onAddTaskForDate && (
+                                        <button
+                                            className={styles.addTaskButton}
+                                            onClick={() => onAddTaskForDate(dateStr)}
+                                            title="Add task for this date"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <DroppableDay dateStr={dateStr}>

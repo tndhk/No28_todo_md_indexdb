@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TaskStatus, RepeatFrequency, Group } from '@/lib/types';
 import styles from './AddTaskModal.module.css';
 
@@ -12,6 +12,7 @@ interface AddTaskModalProps {
     isSubtask?: boolean;
     groups?: Group[];
     defaultGroupId?: string;
+    defaultScheduledDate?: string;
 }
 
 export default function AddTaskModal({
@@ -21,15 +22,21 @@ export default function AddTaskModal({
     defaultStatus: _defaultStatus = 'todo',
     isSubtask = false,
     groups = [],
-    defaultGroupId = ''
+    defaultGroupId = '',
+    defaultScheduledDate = ''
 }: AddTaskModalProps) {
     const [content, setContent] = useState('');
     const [status] = useState<TaskStatus>('todo');
-    const [scheduledDate, setScheduledDate] = useState('');
+    const [scheduledDate, setScheduledDate] = useState(defaultScheduledDate);
     const [dueDate, setDueDate] = useState('');
     const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency | ''>();
     const [repeatIntervalDays, setRepeatIntervalDays] = useState<number | ''>('');
     const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
+
+    // Update scheduledDate when defaultScheduledDate changes
+    useEffect(() => {
+        setScheduledDate(defaultScheduledDate);
+    }, [defaultScheduledDate]);
 
     if (!isOpen) return null;
 
@@ -47,7 +54,7 @@ export default function AddTaskModal({
                 interval
             );
             setContent('');
-            setScheduledDate('');
+            setScheduledDate(defaultScheduledDate);
             setDueDate('');
             setRepeatFrequency('');
             setRepeatIntervalDays('');
