@@ -11,6 +11,7 @@ import {
     validateTaskStatus,
     validateDueDate,
     sanitizeContent,
+    validateRemoteProject,
 } from '@/lib/validation';
 
 describe('validateProjectId', () => {
@@ -598,4 +599,473 @@ describe('Boundary Value Analysis', () => {
     // Note: JavaScript Date object auto-adjusts invalid dates (2025-04-31 becomes 2025-05-01)
     // So validateDueDate will accept them. This is a known limitation of JS Date parsing.
     // If stricter validation is needed, the implementation would need custom date logic.
+});
+
+describe('validateRemoteProject', () => {
+    describe('Valid projects', () => {
+        // Test: Valid minimal project
+        it('should accept valid minimal project', () => {
+            const project = {
+                id: 'test-project',
+                title: 'Test Project',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+            expect(result.error).toBeUndefined();
+        });
+
+        // Test: Valid project with groups
+        it('should accept project with valid groups', () => {
+            const project = {
+                id: 'test-project',
+                title: 'Test Project',
+                groups: [
+                    {
+                        id: 'group-1',
+                        name: 'Todo',
+                        tasks: [],
+                    },
+                    {
+                        id: 'group-2',
+                        name: 'Done',
+                        tasks: [],
+                    },
+                ],
+                path: '/path/to/project',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+
+        // Test: Valid project with groups containing tasks
+        it('should accept project with groups containing tasks', () => {
+            const project = {
+                id: 'test-project',
+                title: 'Test Project',
+                groups: [
+                    {
+                        id: 'group-1',
+                        name: 'Todo',
+                        tasks: [
+                            { id: 'task-1', content: 'Task 1' },
+                        ],
+                    },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+    });
+
+    describe('Invalid project object', () => {
+        // Test: Null project
+        it('should reject null project', () => {
+            const result = validateRemoteProject(null);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('not a valid object');
+        });
+
+        // Test: Undefined project
+        it('should reject undefined project', () => {
+            const result = validateRemoteProject(undefined);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('not a valid object');
+        });
+
+        // Test: Non-object project (string)
+        it('should reject string as project', () => {
+            const result = validateRemoteProject('not an object');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('not a valid object');
+        });
+
+        // Test: Non-object project (number)
+        it('should reject number as project', () => {
+            const result = validateRemoteProject(123);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('not a valid object');
+        });
+
+        // Test: Non-object project (array)
+        // Note: typeof [] === 'object' in JavaScript, so array passes object check
+        // but fails on id validation (arrays don't have an id property)
+        it('should reject array as project', () => {
+            const result = validateRemoteProject([]);
+            expect(result.valid).toBe(false);
+            // Arrays are typeof 'object' so they pass the object check but fail on id
+            expect(result.error).toContain('valid id');
+        });
+    });
+
+    describe('Missing required fields', () => {
+        // Test: Missing id
+        it('should reject project without id', () => {
+            const project = {
+                title: 'Test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid id');
+        });
+
+        // Test: Missing title
+        it('should reject project without title', () => {
+            const project = {
+                id: 'test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid title');
+        });
+
+        // Test: Missing groups
+        it('should reject project without groups', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('groups array');
+        });
+
+        // Test: Missing path
+        it('should reject project without path', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [],
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid path');
+        });
+    });
+
+    describe('Invalid field types', () => {
+        // Test: Non-string id
+        it('should reject project with non-string id', () => {
+            const project = {
+                id: 123,
+                title: 'Test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid id');
+        });
+
+        // Test: Non-string title
+        it('should reject project with non-string title', () => {
+            const project = {
+                id: 'test',
+                title: 123,
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid title');
+        });
+
+        // Test: Non-array groups
+        it('should reject project with non-array groups', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: 'not an array',
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('groups array');
+        });
+
+        // Test: Non-string path
+        it('should reject project with non-string path', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [],
+                path: 123,
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid path');
+        });
+
+        // Test: Empty string id
+        it('should reject project with empty string id', () => {
+            const project = {
+                id: '',
+                title: 'Test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid id');
+        });
+
+        // Test: Empty string title
+        it('should reject project with empty string title', () => {
+            const project = {
+                id: 'test',
+                title: '',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('valid title');
+        });
+    });
+
+    describe('Invalid groups', () => {
+        // Test: Invalid group object (not an object)
+        it('should reject project with invalid group (not object)', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: ['not a group object'],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('invalid group');
+        });
+
+        // Test: Invalid group object (null)
+        it('should reject project with null group', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [null],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('invalid group');
+        });
+
+        // Test: Group without id
+        it('should reject project with group missing id', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { name: 'Todo', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid id');
+        });
+
+        // Test: Group without name
+        it('should reject project with group missing name', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'group-1', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid name');
+        });
+
+        // Test: Group without tasks
+        it('should reject project with group missing tasks', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'group-1', name: 'Todo' },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('tasks array');
+        });
+
+        // Test: Group with non-array tasks
+        it('should reject project with group having non-array tasks', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'group-1', name: 'Todo', tasks: 'not an array' },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('tasks array');
+        });
+
+        // Test: Group with non-string id
+        it('should reject project with group having non-string id', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 123, name: 'Todo', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid id');
+        });
+
+        // Test: Group with non-string name
+        it('should reject project with group having non-string name', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'group-1', name: 123, tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid name');
+        });
+
+        // Test: Group with empty string id
+        it('should reject project with group having empty string id', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: '', name: 'Todo', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid id');
+        });
+
+        // Test: Group with empty string name
+        it('should reject project with group having empty string name', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'group-1', name: '', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('group must have a valid name');
+        });
+    });
+
+    describe('Multiple groups validation', () => {
+        // Test: Multiple valid groups
+        it('should accept project with multiple valid groups', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'g1', name: 'Todo', tasks: [] },
+                    { id: 'g2', name: 'Doing', tasks: [] },
+                    { id: 'g3', name: 'Done', tasks: [] },
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+
+        // Test: First group invalid, second valid
+        it('should reject if any group is invalid', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: '', name: 'Todo', tasks: [] }, // Invalid
+                    { id: 'g2', name: 'Done', tasks: [] }, // Valid
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+        });
+
+        // Test: Last group invalid
+        it('should reject if last group is invalid', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [
+                    { id: 'g1', name: 'Todo', tasks: [] }, // Valid
+                    { id: 'g2', name: '', tasks: [] }, // Invalid
+                ],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(false);
+        });
+    });
+
+    describe('Boundary cases', () => {
+        // Test: Empty groups array is valid
+        it('should accept project with empty groups array', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+
+        // Test: Empty path is valid
+        it('should accept project with empty path string', () => {
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups: [],
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+
+        // Test: Large number of groups
+        it('should accept project with many groups', () => {
+            const groups = Array.from({ length: 100 }, (_, i) => ({
+                id: `group-${i}`,
+                name: `Group ${i}`,
+                tasks: [],
+            }));
+            const project = {
+                id: 'test',
+                title: 'Test',
+                groups,
+                path: '',
+            };
+            const result = validateRemoteProject(project);
+            expect(result.valid).toBe(true);
+        });
+    });
 });
