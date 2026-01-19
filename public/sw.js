@@ -1,8 +1,10 @@
 // Service Worker for Momentum Task Manager
 // Provides offline support and caching strategies
 
-const CACHE_NAME = 'momentum-v1';
-const RUNTIME_CACHE = 'momentum-runtime-v1';
+// Cache version will be replaced during build with timestamp
+const CACHE_VERSION = '__CACHE_VERSION__';
+const CACHE_NAME = `momentum-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `momentum-runtime-${CACHE_VERSION}`;
 
 // Assets to cache on install
 const PRECACHE_URLS = [
@@ -44,7 +46,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - Stale-While-Revalidate strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -66,13 +68,8 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Cache hit - return cached response
-        return cachedResponse;
-      }
-
-      // Not in cache - fetch from network
-      return fetch(request)
+      // Fetch from network in background
+      const fetchPromise = fetch(request)
         .then((response) => {
           // Don't cache non-successful responses
           if (!response || response.status !== 200 || response.type === 'error') {
@@ -82,7 +79,7 @@ self.addEventListener('fetch', (event) => {
           // Clone the response
           const responseToCache = response.clone();
 
-          // Cache the fetched response for runtime
+          // Update cache with fresh response
           caches.open(RUNTIME_CACHE).then((cache) => {
             // Only cache same-origin requests or fonts
             if (url.origin === location.origin || url.hostname.includes('fonts')) {
@@ -93,18 +90,27 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Network failed - try to return cached fallback for navigation
-          if (request.mode === 'navigate') {
+          // Network failed - if we have cache, it was already returned
+          // If not, return error page for navigation
+          if (request.mode === 'navigate' && !cachedResponse) {
             return caches.match('/');
           }
-          return new Response('Offline - Network request failed', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain',
-            }),
-          });
+          if (!cachedResponse) {
+            return new Response('Offline - Network request failed', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({
+                'Content-Type': 'text/plain',
+              }),
+            });
+          }
+          // If we have cache, it was already returned above
+          return cachedResponse;
         });
+
+      // Stale-While-Revalidate: Return cached response immediately,
+      // but also fetch in background to update cache
+      return cachedResponse || fetchPromise;
     })
   );
 });
