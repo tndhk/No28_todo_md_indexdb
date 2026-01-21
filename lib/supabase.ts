@@ -10,7 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,    // トークンの自動更新を有効化
+        persistSession: true,      // セッションをlocalStorageに永続化
+        detectSessionInUrl: true,  // OAuth コールバック時のURL内セッション検出
+      },
+    })
   : null;
 
 // API ルート用のサーバーサイドクライアントを取得する方法も必要になるかもしれません
