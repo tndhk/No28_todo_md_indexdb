@@ -20,6 +20,9 @@ export default function ServiceWorkerRegister() {
       return
     }
 
+    // ユーザーが明示的に更新を承認した場合のみリロードを許可するフラグ
+    let userApprovedUpdate = false
+
     // Capture beforeinstallprompt event early (before InstallPrompt component mounts)
     const captureInstallPrompt = (e: Event) => {
       e.preventDefault()
@@ -49,8 +52,9 @@ export default function ServiceWorkerRegister() {
 
                 // Optionally show a notification to the user
                 if (window.confirm('新しいバージョンが利用可能です。更新しますか？')) {
+                  userApprovedUpdate = true
                   newWorker.postMessage({ type: 'SKIP_WAITING' })
-                  window.location.reload()
+                  // リロードは controllerchange で行う
                 }
               }
             })
@@ -58,8 +62,11 @@ export default function ServiceWorkerRegister() {
         })
 
         // Listen for controller change (new SW activated)
+        // ユーザーが承認した場合のみリロードする（意図しないログアウトを防止）
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload()
+          if (userApprovedUpdate) {
+            window.location.reload()
+          }
         })
 
         // Check for updates immediately on page load
