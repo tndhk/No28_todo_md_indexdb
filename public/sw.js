@@ -2,7 +2,7 @@
 // Provides offline support and caching strategies
 
 // Cache version will be replaced during build with timestamp
-const CACHE_VERSION = '__CACHE_VERSION__';
+const CACHE_VERSION = 'v1768977567526';
 const CACHE_NAME = `momentum-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `momentum-runtime-${CACHE_VERSION}`;
 
