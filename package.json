@@ -35,6 +35,10 @@
     "unified": "^11.0.5",
     "zod": "^4.1.12"
   },
+  "overrides": {
+    "minimatch": "^10.2.2",
+    "webpack": "^5.105.2"
+  },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
     "@testing-library/jest-dom": "^6.9.1",
