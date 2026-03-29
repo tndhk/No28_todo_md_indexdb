@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   // Static export for IndexedDB version - no server required
   output: 'export',
 
-  // Use system TLS certificates for Turbopack to resolve Google Fonts issues in CI
-  experimental: {
-    turbopackUseSystemTlsCerts: true,
-  },
 };
 
 // Sentry configuration options
