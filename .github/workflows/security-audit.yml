@@ -37,7 +37,7 @@ jobs:
         id: npm-audit
 
       - name: Run npm audit (production only)
-        run: npm audit --production --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
         id: npm-audit-prod
 
       - name: Check for vulnerabilities
