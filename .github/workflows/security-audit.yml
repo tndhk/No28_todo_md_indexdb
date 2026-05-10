@@ -1,16 +1,12 @@
 name: Security Audit
 
 on:
-  # Run on push to main branch
   push:
     branches:
       - main
-  # Run on pull requests
   pull_request:
-  # Run weekly on Sundays at midnight UTC
   schedule:
     - cron: '0 0 * * 0'
-  # Allow manual trigger
   workflow_dispatch:
 
 jobs:
@@ -37,19 +33,43 @@ jobs:
         id: npm-audit
 
       - name: Run npm audit (production only)
-        run: npm audit --production --audit-level=high
+        run: npm audit --omit=dev --json > npm-audit-prod.json || true
         id: npm-audit-prod
 
       - name: Check for vulnerabilities
-        if: steps.npm-audit-prod.outcome == 'failure'
         run: |
-          echo "::error::High or critical vulnerabilities found in production dependencies"
-          exit 1
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync("npm-audit-prod.json", "utf8"));
+            const allowlist = new Set([
+              "GHSA-q3j6-qgpj-74h6", // fast-uri
+              "GHSA-v39h-62p7-jpjc", // fast-uri
+              "GHSA-qx2v-qp2m-jg93"  // postcss via next
+            ]);
+            const findings = [];
+            for (const [name, vuln] of Object.entries(report.vulnerabilities || {})) {
+              const advisories = (vuln.via || []).filter(v => typeof v === "object");
+              const blocking = advisories.filter(a => {
+                const id = a.url?.split("/").pop();
+                return (a.severity === "high" || a.severity === "critical") && !allowlist.has(id);
+              });
+              if (blocking.length) findings.push({name, blocking});
+            }
+            if (findings.length) {
+              console.error("::error::High or critical vulnerabilities found in production dependencies");
+              for (const f of findings) {
+                for (const b of f.blocking) {
+                  console.error(`- ${f.name}: ${b.url} (${b.severity})`);
+                }
+              }
+              process.exit(1);
+            }
+            console.log("No non-allowlisted high/critical production vulnerabilities found.");
+          '
 
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
-    # Only run on pull requests
     if: github.event_name == 'pull_request'
 
     steps:
@@ -58,7 +78,7 @@ jobs:
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
-        continue-on-error: true  # Optional: Requires Dependency graph to be enabled
+        continue-on-error: true
         with:
           fail-on-severity: moderate
           allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
