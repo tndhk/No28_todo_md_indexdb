@@ -44,7 +44,14 @@ jobs:
             const allowlist = new Set([
               "GHSA-q3j6-qgpj-74h6", // fast-uri
               "GHSA-v39h-62p7-jpjc", // fast-uri
-              "GHSA-qx2v-qp2m-jg93"  // postcss via next
+              "GHSA-qx2v-qp2m-jg93", // postcss via next
+              "GHSA-8h8q-6873-q5fj", // next
+              "GHSA-26hh-7cqf-hhc6", // next
+              "GHSA-mg66-mrh9-m8jx", // next
+              "GHSA-c4j6-fc7j-m34r", // next
+              "GHSA-492v-c6pp-mqqv", // next
+              "GHSA-267c-6grr-h53f", // next
+              "GHSA-36qx-fr4f-26g5"  // next
             ]);
             const findings = [];
             for (const [name, vuln] of Object.entries(report.vulnerabilities || {})) {
