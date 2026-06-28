@@ -39,7 +39,8 @@
     "minimatch": "^10.2.3",
     "webpack": "^5.105.2",
     "rollup": "^4.59.0",
-    "serialize-javascript": "^7.0.5"
+    "serialize-javascript": "^7.0.5",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
